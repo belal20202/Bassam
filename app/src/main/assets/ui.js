@@ -112,6 +112,110 @@ class UIManager {
 
     this.updateMissionBadge();
     this.updateRewardsBadge();
+    this.renderMenuCharacter();
+  }
+
+  // Render character on the menu canvas
+  renderMenuCharacter() {
+    const canvas = document.getElementById("menu-character-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const outfit = (this.game && this.game.player && this.game.player.outfit) || CONFIG.CLOTHES[0];
+    const colors = outfit.colors;
+
+    // Ground shadow
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+    ctx.beginPath();
+    ctx.ellipse(w / 2, h - 22, 45, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const cx = w / 2;
+    const cy = h / 2 - 8;
+
+    // Legs
+    ctx.fillStyle = colors.pants;
+    ctx.fillRect(cx - 20, cy + 28, 14, 46);
+    ctx.fillRect(cx + 6, cy + 28, 14, 46);
+
+    // Shoes
+    ctx.fillStyle = colors.shoes;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(cx - 24, cy + 68, 20, 14, 4);
+      ctx.roundRect(cx + 4, cy + 68, 20, 14, 4);
+    } else {
+      ctx.rect(cx - 24, cy + 68, 20, 14);
+      ctx.rect(cx + 4, cy + 68, 20, 14);
+    }
+    ctx.fill();
+
+    // Torso / Shirt
+    ctx.fillStyle = colors.shirt;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(cx - 26, cy - 24, 52, 56, 10);
+    } else {
+      ctx.rect(cx - 26, cy - 24, 52, 56);
+    }
+    ctx.fill();
+
+    // Iraqi flag pin badge on shirt
+    ctx.fillStyle = "#CE1126"; // Red
+    ctx.fillRect(cx - 15, cy - 10, 14, 3);
+    ctx.fillStyle = "#FFFFFF"; // White
+    ctx.fillRect(cx - 15, cy - 7, 14, 3);
+    ctx.fillStyle = "#000000"; // Black
+    ctx.fillRect(cx - 15, cy - 4, 14, 3);
+
+    // Arms
+    ctx.fillStyle = colors.shirt;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(cx - 38, cy - 20, 12, 38, 5);
+      ctx.roundRect(cx + 26, cy - 20, 12, 38, 5);
+    } else {
+      ctx.rect(cx - 38, cy - 20, 12, 38);
+      ctx.rect(cx + 26, cy - 20, 12, 38);
+    }
+    ctx.fill();
+
+    // Hands
+    ctx.fillStyle = colors.skin;
+    ctx.beginPath();
+    ctx.arc(cx - 32, cy + 22, 7, 0, Math.PI * 2);
+    ctx.arc(cx + 32, cy + 22, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Head
+    ctx.fillStyle = colors.skin;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 48, 26, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair
+    ctx.fillStyle = colors.hair;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 54, 27, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes
+    ctx.fillStyle = "#1E293B";
+    ctx.beginPath();
+    ctx.arc(cx - 8, cy - 48, 3.5, 0, Math.PI * 2);
+    ctx.arc(cx + 8, cy - 48, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cheerful smile
+    ctx.strokeStyle = "#C2410C";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 43, 10, 0.15 * Math.PI, 0.85 * Math.PI, false);
+    ctx.stroke();
   }
 
   // Update Missions red notification dot

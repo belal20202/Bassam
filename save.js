@@ -47,6 +47,25 @@ const SaveManager = {
     };
   },
 
+  // In-memory fallback if localStorage is disabled or restricted
+  _memoryFallback: {},
+  _getItem(key) {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        return window.localStorage.getItem(key);
+      }
+    } catch (_) {}
+    return this._memoryFallback[key] || null;
+  },
+  _setItem(key, value) {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
+    } catch (_) {}
+    this._memoryFallback[key] = value;
+  },
+
   // Active in-memory state
   data: null,
 
@@ -59,7 +78,7 @@ const SaveManager = {
   // Load and validate from LocalStorage
   load() {
     try {
-      const raw = localStorage.getItem(this.STORAGE_KEY);
+      const raw = this._getItem(this.STORAGE_KEY);
       if (!raw) {
         return this.createAndSaveDefault();
       }
@@ -82,7 +101,7 @@ const SaveManager = {
     try {
       this.validateAndSanitize(this.data);
       const serialized = JSON.stringify(this.data);
-      localStorage.setItem(this.STORAGE_KEY, serialized);
+      this._setItem(this.STORAGE_KEY, serialized);
       return true;
     } catch (err) {
       console.error("Failed to save game state:", err);
@@ -93,7 +112,7 @@ const SaveManager = {
   // Backup store
   backup(data) {
     try {
-      localStorage.setItem(this.BACKUP_KEY, JSON.stringify(data));
+      this._setItem(this.BACKUP_KEY, JSON.stringify(data));
     } catch (e) {
       // Storage might be full or disabled, safely ignore
     }
@@ -102,7 +121,7 @@ const SaveManager = {
   // Restore from backup or fallback to fresh default
   restoreFromBackup() {
     try {
-      const backupRaw = localStorage.getItem(this.BACKUP_KEY);
+      const backupRaw = this._getItem(this.BACKUP_KEY);
       if (backupRaw) {
         const parsed = JSON.parse(backupRaw);
         return this.validateAndSanitize(parsed);

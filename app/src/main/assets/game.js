@@ -45,13 +45,24 @@ class Game {
     this.handleResize();
     window.addEventListener("resize", () => this.handleResize());
 
-    // Start loading simulation
-    this.simulateLoading();
+    // Initialize to menu state immediately
+    this.state = "menu";
+    this.ui.showScreen("mainMenu");
+    this.ui.refreshMenuData();
+    this.drawMenuBackground();
+
+    // Signal Android container
+    if (window.AndroidBridge && typeof window.AndroidBridge.onGameReady === "function") {
+      try {
+        window.AndroidBridge.onGameReady();
+      } catch (_) {}
+    }
   }
 
   // Handle high-DPI responsive canvas scaling
   handleResize() {
     const container = document.querySelector(".game-app");
+    if (!container) return;
     const rect = container.getBoundingClientRect();
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap at 2 for performance
@@ -63,6 +74,21 @@ class Game {
 
     this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset
     this.ctx.scale(dpr, dpr);
+
+    if (this.state === "menu") {
+      this.drawMenuBackground();
+    }
+  }
+
+  // Draw heritage scenery behind main menu
+  drawMenuBackground() {
+    if (this.state !== "menu") return;
+    try {
+      this.ctx.clearRect(0, 0, this.virtualWidth, this.virtualHeight);
+      if (this.world) {
+        this.world.render(this.ctx, this.camera, this.virtualWidth, this.virtualHeight);
+      }
+    } catch (_) {}
   }
 
   // Smooth loading bar simulation with informative phases

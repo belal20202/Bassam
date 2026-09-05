@@ -208,6 +208,8 @@ fun BassamGameApp() {
               databaseEnabled = true
               allowFileAccess = true
               allowContentAccess = true
+              allowFileAccessFromFileURLs = true
+              allowUniversalAccessFromFileURLs = true
               mediaPlaybackRequiresUserGesture = false
               cacheMode = WebSettings.LOAD_DEFAULT
               useWideViewPort = true
@@ -238,7 +240,7 @@ fun BassamGameApp() {
                 detail: RenderProcessGoneDetail?
               ): Boolean {
                 val didCrash = detail?.didCrash() ?: false
-                Log.e("BassamWebView", "Render process gone (crashed=$didCrash). Cleanly destroyed.")
+                Log.e("BassamWebView", "Render process gone (crashed=$didCrash). Recovering...")
                 view?.let { deadView ->
                   (deadView.parent as? ViewGroup)?.removeView(deadView)
                   try {
@@ -246,13 +248,17 @@ fun BassamGameApp() {
                   } catch (_: Exception) {}
                 }
                 webViewInstance = null
+                if (reloadKey < 3) {
+                  reloadKey++
+                }
                 return true
               }
             }
 
             webChromeClient = object : WebChromeClient() {
               override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                return super.onConsoleMessage(consoleMessage)
+                Log.d("BassamJS", "${consoleMessage?.message()} -- [${consoleMessage?.sourceId()}:${consoleMessage?.lineNumber()}]")
+                return true
               }
             }
 
@@ -357,7 +363,7 @@ fun BassamLoadingScreen(progress: Float) {
       )
 
       Text(
-        text = "BASSAM RUNNER • نحشة في الشوارع",
+        text = "BASSAM RUNNER • صنع في العراق 🇮🇶",
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold,
         color = androidx.compose.ui.graphics.Color(0xFFFFD54F),
