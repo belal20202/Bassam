@@ -198,6 +198,9 @@ fun BassamGameApp() {
               ViewGroup.LayoutParams.MATCH_PARENT,
               ViewGroup.LayoutParams.MATCH_PARENT
             )
+            // Fix: Software layer prevents "Failed to open rendernode" Mesa GPU driver crashes
+            // in headless/containerized Android emulator environments
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
             setBackgroundColor(Color.parseColor("#0B0F19"))
             isFocusable = true
             isFocusableInTouchMode = true
