@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#f57c00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>بسام | Bassam Runner</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏃</text></svg>">
+  
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Tajawal:wght@500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Container Wrapper for Viewport & Scaling -->
+  <div id="game-app" class="game-app">
+    
+    <!-- Canvas Viewport for 3D/2.5D Endless Runner -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen" class="screen active">
+      <div class="loading-content">
+        <div class="game-logo-badge">
+          <div class="logo-circle">
+            <span class="logo-emoji">🏃‍♂️</span>
+          </div>
+          <h1 class="game-title">بَسَّام</h1>
+          <p class="game-subtitle">BASSAM RUNNER</p>
+        </div>
+        
+        <div class="comic-speech-bubble bounce">
+          <span>«يا بسام... أسرع قبل ما يصيدك!»</span>
+        </div>
+
+        <div class="progress-box">
+          <div class="progress-bar-bg">
+            <div id="loading-bar" class="progress-bar-fill" style="width: 15%;"></div>
+          </div>
+          <span id="loading-text" class="loading-label">جاري تجهيز الشوارع... 15%</span>
+        </div>
+
+        <div class="made-in-iraq">
+          <span>صنع في العراق 🇮🇶 | بلال النعيمي 2026</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN MENU SCREEN -->
+    <div id="main-menu" class="screen">
+      <!-- Top Bar Profile / Currency -->
+      <div class="menu-top-bar">
+        <div class="player-badge">
+          <div class="avatar-box" id="menu-avatar">🏃</div>
+          <div class="player-info-text">
+            <span class="player-name" id="menu-player-name">بسام</span>
+            <div class="level-pill">
+              <span id="menu-level">المستوى 1</span>
+              <div class="xp-mini-bar"><div id="menu-xp-fill" style="width: 20%;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="currency-pill">
+          <span class="coin-icon">🪙</span>
+          <span id="menu-coins" class="coin-count">0</span>
+        </div>
+      </div>
+
+      <!-- Center Logo & Character Spotlight -->
+      <div class="menu-center">
+        <div class="title-container">
+          <h1 class="main-title">بَسَّام</h1>
+          <span class="main-tagline">نحشة في شوارع المدينة!</span>
+        </div>
+
+        <div class="character-preview-card" id="btn-open-shop-quick">
+          <div class="character-glow"></div>
+          <canvas id="menu-character-canvas" width="200" height="220"></canvas>
+          <div class="current-costume-tag" id="menu-outfit-name">بسام الكاجوال</div>
+          <button class="tap-to-change-btn" id="btn-quick-wardrobe">تغيير الزي 👕</button>
+        </div>
+      </div>
+
+      <!-- Primary Action & Menu Grid -->
+      <div class="menu-bottom">
+        <button id="btn-play" class="btn-play-primary">
+          <span class="btn-play-icon">▶</span>
+          <span class="btn-play-text">ابدأ اللعب!</span>
+        </button>
+
+        <div class="menu-action-grid">
+          <button id="btn-shop" class="btn-grid-action">
+            <span class="grid-icon">🛍️</span>
+            <span class="grid-label">المتجر</span>
+          </button>
+          <button id="btn-missions" class="btn-grid-action">
+            <span class="grid-icon">🎯</span>
+            <span class="grid-label">المهام</span>
+            <span id="missions-badge" class="badge-dot hidden">!</span>
+          </button>
+          <button id="btn-rewards" class="btn-grid-action">
+            <span class="grid-icon">🎁</span>
+            <span class="grid-label">مكافأة يومية</span>
+            <span id="rewards-badge" class="badge-dot">!</span>
+          </button>
+          <button id="btn-leaderboard" class="btn-grid-action">
+            <span class="grid-icon">🏆</span>
+            <span class="grid-label">الصدارة</span>
+          </button>
+          <button id="btn-chests" class="btn-grid-action">
+            <span class="grid-icon">📦</span>
+            <span class="grid-label">الصناديق</span>
+          </button>
+          <button id="btn-settings" class="btn-grid-action">
+            <span class="grid-icon">⚙️</span>
+            <span class="grid-label">الإعدادات</span>
+          </button>
+        </div>
+
+        <div class="menu-secondary-row">
+          <button id="btn-how-to-play" class="btn-text-link">طريقة اللعب 🎮</button>
+          <button id="btn-about" class="btn-text-link">عن اللعبة 🇮🇶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IN-GAME HUD -->
+    <div id="game-hud" class="screen">
+      <!-- Top HUD Banner -->
+      <div class="hud-top-bar">
+        <div class="hud-metric score-metric">
+          <span class="hud-label">النقاط</span>
+          <span id="hud-score" class="hud-value">0</span>
+          <span id="hud-multiplier" class="hud-multiplier">x1</span>
+        </div>
+
+        <div class="hud-center-zone">
+          <div class="environment-badge" id="hud-env-name">الحي السكني</div>
+          <div class="pursuer-warning hidden" id="hud-pursuer-alert">⚠️ المطارد يقترب!</div>
+        </div>
+
+        <div class="hud-right-group">
+          <div class="hud-metric coins-metric">
+            <span class="coin-icon-small">🪙</span>
+            <span id="hud-coins" class="hud-value">0</span>
+          </div>
+          <div class="hud-metric distance-metric">
+            <span id="hud-distance" class="hud-value">0</span>
+            <span class="hud-unit">م</span>
+          </div>
+          <button id="btn-pause" class="btn-pause" aria-label="Pause">
+            <span>⏸️</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Power-up Timer Indicators (Left Side) -->
+      <div id="hud-powerups" class="hud-powerups-container">
+        <!-- Dynamically injected active powerup pills -->
+      </div>
+
+      <!-- Comic Cutscene / Alert Bubble -->
+      <div id="hud-comic-bubble" class="comic-bubble-in-game hidden">
+        <span id="hud-comic-text">بسام! ارجع!</span>
+      </div>
+
+      <!-- Mobile Touch Controls Overlay (Optional Visual Helper) -->
+      <div class="touch-swipe-zone" id="touch-zone"></div>
+    </div>
+
+    <!-- PAUSE MODAL -->
+    <div id="pause-modal" class="modal-backdrop hidden">
+      <div class="modal-card pause-card">
+        <h2 class="modal-title">⏸️ اللعبة متوقفة</h2>
+        
+        <div class="pause-stats-row">
+          <div class="stat-box">
+            <span class="stat-title">النقاط الحالية</span>
+            <span id="pause-score" class="stat-number">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-title">العملات المجمعة</span>
+            <span id="pause-coins" class="stat-number">0</span>
+          </div>
+        </div>
+
+        <div class="pause-audio-controls">
+          <button id="pause-toggle-sfx" class="btn-audio-toggle active">
+            <span>🔊 المؤثرات</span>
+          </button>
+          <button id="pause-toggle-music" class="btn-audio-toggle active">
+            <span>🎵 الموسيقى</span>
+          </button>
+        </div>
+
+        <div class="modal-actions-vertical">
+          <button id="btn-resume" class="btn-primary-action">استمرار اللعب ▶</button>
+          <button id="btn-restart-from-pause" class="btn-secondary-action">إعادة الجولة 🔄</button>
+          <button id="btn-exit-to-menu" class="btn-secondary-action">الخروج للرئيسية 🏠</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="game-over-screen" class="screen">
+      <div class="game-over-card">
+        <div class="game-over-header">
+          <span class="game-over-icon">💥</span>
+          <h2 class="game-over-title">انتهت النحشة!</h2>
+          <p id="game-over-quote" class="game-over-subtitle">بسام... كانت هذه الجولة صعبة!</p>
+        </div>
+
+        <div id="game-over-new-record" class="new-record-banner hidden">
+          <span>🔥 رقم قياسي جديد!</span>
+        </div>
+
+        <div class="results-grid">
+          <div class="result-box">
+            <span class="res-label">المسافة</span>
+            <span id="go-distance" class="res-value">0 م</span>
+          </div>
+          <div class="result-box highlight">
+            <span class="res-label">النقاط</span>
+            <span id="go-score" class="res-value">0</span>
+          </div>
+          <div class="result-box">
+            <span class="res-label">العملات المكتسبة</span>
+            <span id="go-coins" class="res-value">0</span>
+          </div>
+          <div class="result-box">
+            <span class="res-label">أفضل نتيجة</span>
+            <span id="go-best-score" class="res-value">0</span>
+          </div>
+        </div>
+
+        <!-- Level Progress Gained in run -->
+        <div class="level-progress-card">
+          <div class="xp-header">
+            <span>الخبرة (XP)</span>
+            <span id="go-xp-text">+150 XP</span>
+          </div>
+          <div class="progress-bar-bg small">
+            <div id="go-xp-bar" class="progress-bar-fill" style="width: 50%;"></div>
+          </div>
+        </div>
+
+        <div class="game-over-buttons">
+          <button id="btn-play-again" class="btn-play-primary">
+            <span>🔄 العب مجدداً</span>
+          </button>
+          <div class="secondary-btn-row">
+            <button id="btn-go-shop" class="btn-secondary-action">🛍️ المتجر</button>
+            <button id="btn-go-home" class="btn-secondary-action">🏠 الرئيسية</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHOP MODAL -->
+    <div id="shop-modal" class="modal-backdrop hidden">
+      <div class="modal-card full-modal">
+        <div class="modal-header">
+          <div class="header-title-box">
+            <h2>🛍️ متجر بسام</h2>
+            <div class="currency-pill">
+              <span>🪙</span>
+              <span id="shop-coins-display">0</span>
+            </div>
+          </div>
+          <button class="btn-close-modal" id="btn-close-shop">✕</button>
+        </div>
+
+        <!-- Shop Tabs -->
+        <div class="shop-tabs">
+          <button class="shop-tab-btn active" data-tab="clothes">الملابس (20)</button>
+          <button class="shop-tab-btn" data-tab="upgrades">تطوير القدرات</button>
+          <button class="shop-tab-btn" data-tab="chests">الصناديق</button>
+        </div>
+
+        <!-- Clothes Tab Content -->
+        <div id="tab-clothes" class="tab-content active">
+          <div class="clothes-grid" id="clothes-items-container">
+            <!-- Dynamically populated 20 outfits -->
+          </div>
+        </div>
+
+        <!-- Upgrades Tab Content -->
+        <div id="tab-upgrades" class="tab-content">
+          <div class="upgrades-list" id="upgrades-items-container">
+            <!-- Dynamically populated 5 powerup upgrades -->
+          </div>
+        </div>
+
+        <!-- Chests Tab Content -->
+        <div id="tab-chests" class="tab-content">
+          <div class="chests-grid" id="chests-items-container">
+            <!-- 4 Chests: Normal, Rare, Epic, Legendary -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DAILY MISSIONS MODAL -->
+    <div id="missions-modal" class="modal-backdrop hidden">
+      <div class="modal-card medium-modal">
+        <div class="modal-header">
+          <h2>🎯 المهام اليومية</h2>
+          <button class="btn-close-modal" id="btn-close-missions">✕</button>
+        </div>
+        <p class="modal-desc">أكمل المهام التالية للحصول على عملات ونقاط خبرة وجوائز قيّمة!</p>
+        
+        <div class="missions-list" id="missions-container">
+          <!-- Dynamically populated 10 missions -->
+        </div>
+      </div>
+    </div>
+
+    <!-- DAILY REWARDS MODAL -->
+    <div id="rewards-modal" class="modal-backdrop hidden">
+      <div class="modal-card medium-modal">
+        <div class="modal-header">
+          <h2>🎁 المكافأة اليومية (7 أيام)</h2>
+          <button class="btn-close-modal" id="btn-close-rewards">✕</button>
+        </div>
+        <p class="modal-desc">سجّل دخولك كل يوم للحصول على مكافآت حصرية ومتزايدة!</p>
+
+        <div class="rewards-calendar-grid" id="rewards-calendar-container">
+          <!-- Dynamically populated 7 days -->
+        </div>
+
+        <button id="btn-claim-daily" class="btn-primary-action disabled" disabled>
+          استلام مكافأة اليوم
+        </button>
+      </div>
+    </div>
+
+    <!-- LEADERBOARD MODAL -->
+    <div id="leaderboard-modal" class="modal-backdrop hidden">
+      <div class="modal-card medium-modal">
+        <div class="modal-header">
+          <h2>🏆 لوحة الصدارة</h2>
+          <button class="btn-close-modal" id="btn-close-leaderboard">✕</button>
+        </div>
+        <p class="modal-desc">أفضل الأرقام القياسية المسجلة على جهازك</p>
+
+        <div class="leaderboard-table-container">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>المركز</th>
+                <th>الاسم</th>
+                <th>النقاط</th>
+                <th>المسافة</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <!-- Dynamically populated 10 ranks -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal-backdrop hidden">
+      <div class="modal-card small-modal">
+        <div class="modal-header">
+          <h2>⚙️ الإعدادات</h2>
+          <button class="btn-close-modal" id="btn-close-settings">✕</button>
+        </div>
+
+        <div class="settings-rows">
+          <div class="setting-item">
+            <div class="setting-text">
+              <span class="setting-name">مؤثرات الصوت (SFX)</span>
+              <span class="setting-desc">أصوات القفز والعملات والاصطدام</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-sfx" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-text">
+              <span class="setting-name">الموسيقى الحماسية</span>
+              <span class="setting-desc">ألحان وإيقاعات عربية أصلية</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-music" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-text">
+              <span class="setting-name">مستوى الصوت</span>
+            </div>
+            <input type="range" id="setting-volume" min="0" max="100" value="80" class="range-slider">
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-text">
+              <span class="setting-name">جودة الرسومات</span>
+              <span class="setting-desc">تأثيرات الطقس والجسيمات</span>
+            </div>
+            <select id="setting-graphics" class="custom-select">
+              <option value="high">عالية (60 FPS)</option>
+              <option value="medium">متوسطة</option>
+              <option value="low">منخفضة (توفير طاقة)</option>
+            </select>
+          </div>
+          
+          <div class="setting-item">
+            <div class="setting-text">
+              <span class="setting-name">اسم اللاعب</span>
+            </div>
+            <input type="text" id="setting-player-name" maxlength="15" value="بسام" class="input-text">
+          </div>
+        </div>
+
+        <button id="btn-save-settings" class="btn-primary-action">حفظ الإعدادات</button>
+      </div>
+    </div>
+
+    <!-- HOW TO PLAY MODAL -->
+    <div id="how-to-play-modal" class="modal-backdrop hidden">
+      <div class="modal-card small-modal">
+        <div class="modal-header">
+          <h2>🎮 طريقة اللعب</h2>
+          <button class="btn-close-modal" id="btn-close-how">✕</button>
+        </div>
+
+        <div class="how-to-play-content">
+          <div class="control-guide-item">
+            <div class="guide-icon">📱</div>
+            <div class="guide-text">
+              <strong>على الهاتف (بالسحب):</strong>
+              <p>اسحب لليمين أو اليسار لتغيير المسار.<br>اسحب لأعلى للقفز فوق الحواجز.<br>اسحب لأسفل للانزلاق تحت العوائق العالية.</p>
+            </div>
+          </div>
+          <div class="control-guide-item">
+            <div class="guide-icon">💻</div>
+            <div class="guide-text">
+              <strong>على الكمبيوتر (لوحة المفاتيح):</strong>
+              <p>الأسهم (يمين/يسار) أو A / D = تغيير المسار.<br>السهم لأعلى أو مسافة (Space) = القفز.<br>السهم لأسفل أو S = الانزلاق.</p>
+            </div>
+          </div>
+          <div class="control-guide-item">
+            <div class="guide-icon">⚡</div>
+            <div class="guide-text">
+              <strong>القدرات الخاصة:</strong>
+              <p>🛡️ الدرع: يحميك من اصطدام واحد.<br>🧲 المغناطيس: يجذب العملات الذهبية.<br>⏱️ الإبطاء: يبطئ الزمن لتفادي العقبات بسهولة.<br>🚀 Boost: انطلاق ناري سريع مع حماية!<br>✖️2: مضاعف العملات.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABOUT MODAL -->
+    <div id="about-modal" class="modal-backdrop hidden">
+      <div class="modal-card small-modal text-center">
+        <div class="modal-header">
+          <h2>عن اللعبة 🇮🇶</h2>
+          <button class="btn-close-modal" id="btn-close-about">✕</button>
+        </div>
+
+        <div class="about-card-body">
+          <div class="about-icon-badge">🏃</div>
+          <h3 class="about-app-name">«بَسَّام» - Bassam Runner</h3>
+          <p class="about-version">الإصدار 1.0.0 (2026)</p>
+          <div class="about-iraq-banner">
+            <span>صنع في العراق 🇮🇶</span>
+          </div>
+          <p class="about-dev"><strong>المطور:</strong> بلال النعيمي</p>
+          <p class="about-desc">
+            لعبة ركض ومطاردة عربية أصلية تدمج الأجواء العربية الحديثة بالكوميديا والحماس.<br>
+            جميع الشخصيات والرسومات والبرمجيات والمؤثرات أصلية 100% وخاصة بالمشروع.
+          </p>
+          <div class="about-features-tags">
+            <span class="feat-tag">100% Offline</span>
+            <span class="feat-tag">PWA جاهزة</span>
+            <span class="feat-tag">GitHub Pages</span>
+            <span class="feat-tag">بدون إعلانات مزعجة</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REWARD OPENED POPUP -->
+    <div id="reward-popup" class="modal-backdrop hidden">
+      <div class="modal-card small-modal popup-chest-card">
+        <div class="chest-animation-box">
+          <span id="popup-reward-icon" class="large-reward-icon">🎁</span>
+        </div>
+        <h2 id="popup-reward-title" class="popup-title">مبروك!</h2>
+        <p id="popup-reward-desc" class="popup-desc">لقد حصلت على مكافأة جديدة</p>
+        <button id="btn-close-reward-popup" class="btn-primary-action">رائع!</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Audio unlock banner for mobile browsers -->
+  <div id="audio-starter" class="audio-starter hidden">
+    <span>اضغط للشروع بالصوت 🔊</span>
+  </div>
+
+  <!-- GAME SCRIPTS IN STRICT SEQUENCE -->
+  <script src="config.js"></script>
+  <script src="utils.js"></script>
+  <script src="save.js"></script>
+  <script src="audio.js"></script>
+  <script src="powerups.js"></script>
+  <script src="obstacles.js"></script>
+  <script src="world.js"></script>
+  <script src="player.js"></script>
+  <script src="enemy.js"></script>
+  <script src="missions.js"></script>
+  <script src="shop.js"></script>
+  <script src="rewards.js"></script>
+  <script src="leaderboard.js"></script>
+  <script src="ui.js"></script>
+  <script src="game.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').catch(err => {
+          console.log('SW registration skipped or error:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

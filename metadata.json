@@ -1,0 +1,6 @@
+{
+  "name": "بسام",
+  "description": "لعبة ركض ومطاردة عربية ممتعة وحماسية في شوارع عربية أصيلة مع شخصية بسام والمطارد الطريف.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

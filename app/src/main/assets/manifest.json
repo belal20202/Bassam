@@ -1,0 +1,27 @@
+{
+  "name": "بسام - لعبة الركض والمطاردة العربية",
+  "short_name": "بسام",
+  "description": "لعبة ركض ومطاردة عربية احترافية مليئة بالإثارة والكوميديا والأزياء المتنوعة",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121824",
+  "theme_color": "#f57c00",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["games", "action", "arcade"],
+  "icons": [
+    {
+      "src": "./app/src/main/res/drawable/bassam_icon.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./app/src/main/res/drawable/bassam_icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
