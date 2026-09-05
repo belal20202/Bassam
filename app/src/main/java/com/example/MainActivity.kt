@@ -5,10 +5,12 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.ConsoleMessage
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -23,6 +25,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,6 +65,7 @@ class MainActivity : ComponentActivity() {
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun BassamGameApp() {
+  var reloadKey by remember { mutableIntStateOf(0) }
   var webViewInstance by remember { mutableStateOf<WebView?>(null) }
   val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -69,7 +74,10 @@ fun BassamGameApp() {
       when (event) {
         Lifecycle.Event.ON_RESUME -> webViewInstance?.onResume()
         Lifecycle.Event.ON_PAUSE -> webViewInstance?.onPause()
-        Lifecycle.Event.ON_DESTROY -> webViewInstance?.destroy()
+        Lifecycle.Event.ON_DESTROY -> {
+          webViewInstance?.destroy()
+          webViewInstance = null
+        }
         else -> {}
       }
     }
@@ -77,6 +85,7 @@ fun BassamGameApp() {
     onDispose {
       lifecycleOwner.lifecycle.removeObserver(observer)
       webViewInstance?.destroy()
+      webViewInstance = null
     }
   }
 
@@ -98,59 +107,81 @@ fun BassamGameApp() {
       .background(androidx.compose.ui.graphics.Color(0xFF0B0F19))
       .testTag("bassam_game_container")
   ) {
-    AndroidView(
-      modifier = Modifier
-        .fillMaxSize()
-        .testTag("bassam_game_webview"),
-      factory = { context ->
-        WebView(context).apply {
-          layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-          )
-          setBackgroundColor(Color.parseColor("#0B0F19"))
-          setLayerType(View.LAYER_TYPE_HARDWARE, null)
-          isFocusable = true
-          isFocusableInTouchMode = true
+    key(reloadKey) {
+      AndroidView(
+        modifier = Modifier
+          .fillMaxSize()
+          .testTag("bassam_game_webview"),
+        factory = { context ->
+          WebView(context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+              ViewGroup.LayoutParams.MATCH_PARENT,
+              ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.parseColor("#0B0F19"))
+            // Using LAYER_TYPE_SOFTWARE prevents Mesa GPU rendernode crashes in emulators/cloud environments
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+            isFocusable = true
+            isFocusableInTouchMode = true
 
-          settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            databaseEnabled = true
-            allowFileAccess = true
-            allowContentAccess = true
-            allowFileAccessFromFileURLs = true
-            allowUniversalAccessFromFileURLs = true
-            mediaPlaybackRequiresUserGesture = false
-            cacheMode = WebSettings.LOAD_DEFAULT
-            useWideViewPort = true
-            loadWithOverviewMode = true
-            setSupportZoom(false)
-            displayZoomControls = false
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-              mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            settings.apply {
+              javaScriptEnabled = true
+              domStorageEnabled = true
+              databaseEnabled = true
+              allowFileAccess = true
+              allowContentAccess = true
+              allowFileAccessFromFileURLs = true
+              allowUniversalAccessFromFileURLs = true
+              mediaPlaybackRequiresUserGesture = false
+              cacheMode = WebSettings.LOAD_DEFAULT
+              useWideViewPort = true
+              loadWithOverviewMode = true
+              setSupportZoom(false)
+              displayZoomControls = false
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+              }
             }
-          }
 
-          webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-              super.onPageStarted(view, url, favicon)
+            webViewClient = object : WebViewClient() {
+              override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+              }
+
+              override fun onRenderProcessGone(
+                view: WebView?,
+                detail: RenderProcessGoneDetail?
+              ): Boolean {
+                val didCrash = detail?.didCrash() ?: false
+                Log.e("BassamWebView", "Render process gone (crashed=$didCrash). Recovering...")
+                // Cleanup current instance to prevent leaking native resources
+                view?.let { deadView ->
+                  (deadView.parent as? ViewGroup)?.removeView(deadView)
+                  try {
+                    deadView.destroy()
+                  } catch (_: Exception) {}
+                }
+                webViewInstance = null
+                // Trigger Compose recreation of the WebView
+                reloadKey++
+                return true // Crucial: returning true prevents the entire app from terminating
+              }
             }
-          }
 
-          webChromeClient = object : WebChromeClient() {
-            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-              return super.onConsoleMessage(consoleMessage)
+            webChromeClient = object : WebChromeClient() {
+              override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                return super.onConsoleMessage(consoleMessage)
+              }
             }
-          }
 
-          loadUrl("file:///android_asset/index.html")
-          webViewInstance = this
+            loadUrl("file:///android_asset/index.html")
+            webViewInstance = this
+          }
+        },
+        update = { wv ->
+          webViewInstance = wv
         }
-      },
-      update = { wv ->
-        webViewInstance = wv
-      }
-    )
+      )
+    }
   }
 }

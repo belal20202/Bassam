@@ -30,11 +30,20 @@ jobs:
 
       - name: Prepare Signing & Environment
         run: |
-          # Restore debug keystore if base64 encoded version exists
-          if [ -f "debug.keystore.base64" ] && [ ! -f "debug.keystore" ]; then
-            echo "Decoding debug.keystore from base64..."
-            base64 -d debug.keystore.base64 > debug.keystore
+          # 1. If debug.keystore does not exist, decode from base64
+          if [ ! -f "debug.keystore" ]; then
+            if [ -f "debug.keystore.base64" ]; then
+              echo "Decoding debug.keystore from base64..."
+              base64 -d debug.keystore.base64 > debug.keystore
+            fi
           fi
+          # 2. If still missing or empty, generate a debug.keystore with keytool
+          if [ ! -s "debug.keystore" ]; then
+            echo "Generating fallback debug.keystore with keytool..."
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          # Verify debug.keystore exists and show details
+          ls -la debug.keystore
           # Ensure .env exists for Secrets Gradle Plugin
           touch .env
           # Ensure gradlew executable
