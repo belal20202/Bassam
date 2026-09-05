@@ -65,28 +65,53 @@ class Game {
     this.ctx.scale(dpr, dpr);
   }
 
-  // Smooth loading bar simulation
+  // Smooth loading bar simulation with informative phases
   simulateLoading() {
     let progress = 0;
     const fillEl = document.getElementById("loading-bar") || document.getElementById("loading-bar-fill");
     const labelEl = document.getElementById("loading-text") || document.getElementById("loading-label");
 
-    const loadStep = () => {
-      progress += Utils.randInt(15, 30);
-      if (fillEl) fillEl.style.width = `${Math.min(100, progress)}%`;
+    const messages = [
+      { at: 0, text: "جاري تجهيز شوارع بغداد التراثية... 🏙️" },
+      { at: 25, text: "تحميل أزياء بسام والعملات الذهبية... 🪙" },
+      { at: 50, text: "«يا بسام... أسرع قبل ما يصيدك!» 💨" },
+      { at: 75, text: "ضبط المؤثرات الصوتية والعوائق... 🎵" },
+      { at: 92, text: "اللمسات الأخيرة... جاهز للانطلاق! 🚀" }
+    ];
 
-      if (progress < 100) {
-        setTimeout(loadStep, 80);
-      } else {
-        if (labelEl) labelEl.textContent = "جاهز للانطلاق!";
+    const getMsg = (p) => {
+      let cur = messages[0].text;
+      for (const m of messages) {
+        if (p >= m.at) cur = m.text;
+      }
+      return `${cur} (${Math.min(100, Math.round(p))}%)`;
+    };
+
+    const interval = setInterval(() => {
+      progress += Utils.randInt(5, 12);
+      const capped = Math.min(100, progress);
+
+      if (fillEl) fillEl.style.width = `${capped}%`;
+      if (labelEl) labelEl.textContent = getMsg(capped);
+
+      if (progress >= 100) {
+        clearInterval(interval);
+        if (labelEl) labelEl.textContent = "جاهز للانطلاق! 🏃‍♂️";
+
+        // Notify Android container if present
+        if (window.AndroidBridge && typeof window.AndroidBridge.onGameReady === "function") {
+          try {
+            window.AndroidBridge.onGameReady();
+          } catch (_) {}
+        }
+
         setTimeout(() => {
           this.state = "menu";
           this.ui.showScreen("mainMenu");
           this.ui.refreshMenuData();
-        }, 300);
+        }, 350);
       }
-    };
-    loadStep();
+    }, 90);
   }
 
   // Keyboard & Touch Gesture Controls
@@ -421,7 +446,19 @@ class Game {
   }
 }
 
-// Global bootstrap
-window.addEventListener("DOMContentLoaded", () => {
-  window.game = new Game();
-});
+// Global bootstrap with fallback
+function initBassamGame() {
+  if (!window.game) {
+    try {
+      window.game = new Game();
+    } catch (err) {
+      console.error("Error creating Bassam Game instance:", err);
+    }
+  }
+}
+
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  initBassamGame();
+} else {
+  window.addEventListener("DOMContentLoaded", initBassamGame);
+}
