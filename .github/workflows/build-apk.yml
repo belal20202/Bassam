@@ -1,0 +1,63 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Bassam Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare Signing & Environment
+        run: |
+          # Restore debug keystore if base64 encoded version exists
+          if [ -f "debug.keystore.base64" ] && [ ! -f "debug.keystore" ]; then
+            echo "Decoding debug.keystore from base64..."
+            base64 -d debug.keystore.base64 > debug.keystore
+          fi
+          # Ensure .env exists for Secrets Gradle Plugin
+          touch .env
+          # Ensure gradlew executable
+          chmod +x gradlew
+
+      - name: Sync Game Assets to Android
+        run: |
+          mkdir -p app/src/main/assets
+          cp -f index.html style.css manifest.json *.js app/src/main/assets/ 2>/dev/null || true
+          ls -la app/src/main/assets
+
+      - name: Build Debug APK with Gradle
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare APK Output
+        run: |
+          mkdir -p release-output
+          cp app/build/outputs/apk/debug/*.apk release-output/Bassam-Runner.apk
+          ls -lh release-output/
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bassam-Runner-APK
+          path: release-output/Bassam-Runner.apk
+          retention-days: 30
