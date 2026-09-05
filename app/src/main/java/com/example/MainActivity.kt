@@ -199,9 +199,6 @@ fun BassamGameApp() {
               ViewGroup.LayoutParams.MATCH_PARENT
             )
             setBackgroundColor(Color.parseColor("#0B0F19"))
-            // Using SOFTWARE layer eliminates the Mesa GPU rendernode crash in container/emulator environments
-            // while providing smooth, crash-free 2D canvas rendering
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
             isFocusable = true
             isFocusableInTouchMode = true
 
@@ -211,17 +208,12 @@ fun BassamGameApp() {
               databaseEnabled = true
               allowFileAccess = true
               allowContentAccess = true
-              allowFileAccessFromFileURLs = true
-              allowUniversalAccessFromFileURLs = true
               mediaPlaybackRequiresUserGesture = false
               cacheMode = WebSettings.LOAD_DEFAULT
               useWideViewPort = true
               loadWithOverviewMode = true
               setSupportZoom(false)
               displayZoomControls = false
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-              }
             }
 
             addJavascriptInterface(
@@ -246,7 +238,7 @@ fun BassamGameApp() {
                 detail: RenderProcessGoneDetail?
               ): Boolean {
                 val didCrash = detail?.didCrash() ?: false
-                Log.e("BassamWebView", "Render process gone (crashed=$didCrash). Cleanly recreating WebView...")
+                Log.e("BassamWebView", "Render process gone (crashed=$didCrash). Cleanly destroyed.")
                 view?.let { deadView ->
                   (deadView.parent as? ViewGroup)?.removeView(deadView)
                   try {
@@ -254,9 +246,6 @@ fun BassamGameApp() {
                   } catch (_: Exception) {}
                 }
                 webViewInstance = null
-                if (reloadKey < 3) {
-                  reloadKey++
-                }
                 return true
               }
             }
