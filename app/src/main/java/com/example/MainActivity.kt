@@ -243,7 +243,10 @@ fun BassamGameApp() {
                 detail: RenderProcessGoneDetail?
               ): Boolean {
                 val didCrash = detail?.didCrash() ?: false
-                Log.e("BassamWebView", "Render process gone (crashed=$didCrash). Recovering...")
+                val rendererPriority = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                  detail?.rendererPriorityAtExit() ?: -1
+                } else -1
+                Log.e("BassamWebView", "Render process gone (crashed=$didCrash, priority=$rendererPriority). Recovering cleanly.")
                 view?.let { deadView ->
                   (deadView.parent as? ViewGroup)?.removeView(deadView)
                   try {
@@ -251,7 +254,7 @@ fun BassamGameApp() {
                   } catch (_: Exception) {}
                 }
                 webViewInstance = null
-                if (reloadKey < 3) {
+                if (reloadKey < 5) {
                   reloadKey++
                 }
                 return true
