@@ -1,0 +1,24 @@
+{
+  "name": "بسام",
+  "short_name": "بسام",
+  "version": "1.3.0",
+  "description": "لعبة مغامرات وركض ثلاثية الأبعاد أصيلة بشخصية الشاب العراقي بسام في شوارع بغداد، تصميم وتطوير بلال النعيمي. إصدار 1.3 - صنع في العراق",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "categories": ["games", "action", "adventure"],
+  "developer": {
+    "name": "بلال النعيمي (Bilal Al-Nuaimi)",
+    "country": "Iraq"
+  },
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
