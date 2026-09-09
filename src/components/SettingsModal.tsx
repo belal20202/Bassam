@@ -139,8 +139,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="space-y-2">
             <h3 className="font-bold text-xs text-amber-400 flex items-center gap-1.5">
               <Smartphone className="w-3.5 h-3.5" />
-              <span>تجربة اللعب</span>
+              <span>تجربة اللعب والتحكم</span>
             </h3>
+
+            {/* Inverted Controls Toggle */}
+            <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60 flex items-center justify-between">
+              <div>
+                <span className="text-xs text-slate-200 font-medium block">عكس حركة اللاعب (سحب يسار للذهاب يميناً)</span>
+                <span className="text-[10px] text-amber-400">مفعّل لتحدي وتحكم ديناميكي أسهل</span>
+              </div>
+              <button
+                onClick={() => {
+                  audioManager.playButtonClick();
+                  onUpdateSettings({ invertControls: !(settings.invertControls ?? true) });
+                }}
+                className={`w-10 h-5 rounded-full transition-colors relative p-0.5 ${
+                  (settings.invertControls ?? true) ? 'bg-amber-500' : 'bg-slate-700'
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                    (settings.invertControls ?? true) ? 'translate-x-0' : '-translate-x-5'
+                  }`}
+                />
+              </button>
+            </div>
 
             {/* Camera Shake */}
             <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60 flex items-center justify-between">
@@ -171,15 +194,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span className="text-xs">معلومات اللعبة والمطور</span>
               </div>
               <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md font-mono font-bold">
-                v1.3
+                v2.0
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
               <div>اسم اللعبة: <strong className="text-white font-bold">بسام</strong></div>
               <div>المطور والمصمم: <strong className="text-amber-400 font-bold">بلال النعيمي</strong></div>
-              <div>رقم الإصدار: <strong className="text-slate-200 font-mono">1.3</strong></div>
+              <div>رقم الإصدار: <strong className="text-slate-200 font-mono">2.0</strong></div>
               <div>دعم الأجهزة: <strong className="text-emerald-400">أندرويد متطور ومتوسط</strong></div>
-              <div>العوالم: <strong className="text-slate-200">مدن عربية وعالمية متنوعة</strong></div>
+              <div>المحافظات: <strong className="text-slate-200">18 محافظة عراقية (كل 1500م)</strong></div>
               <div>العملة: <strong className="text-yellow-300 font-bold">1 عملة = 250 د.ع</strong></div>
             </div>
           </div>

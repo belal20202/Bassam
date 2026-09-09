@@ -25,36 +25,34 @@ interface InGameHUDProps {
 }
 
 const BIOME_NAMES: Record<BiomeType, string> = {
-  EGYPT_CAIRO: 'مصر - القاهرة 🇪🇬',
-  UAE_DUBAI: 'الإمارات - دبي 🇦🇪',
-  SAUDI_RIYADH: 'السعودية - الرياض 🇸🇦',
-  MOROCCO_MARRAKESH: 'المغرب - مراكش 🇲🇦',
-  QATAR_DOHA: 'قطر - الدوحة 🇶🇦',
-  JORDAN_AMMAN: 'الأردن - عمّان 🇯🇴',
-  LEBANON_BEIRUT: 'لبنان - بيروت 🇱🇧',
-  IRAQ_BAGHDAD: 'العراق - بغداد 🇮🇶',
-  KUWAIT_CITY: 'الكويت - العاصمة 🇰🇼',
-  OMAN_MUSCAT: 'عُمان - مسقط 🇴🇲',
-  ALGERIA_ALGIERS: 'الجزائر - العاصمة 🇩🇿',
-  TUNISIA_TUNIS: 'تونس - الخضراء 🇹🇳',
-  JAPAN_TOKYO: 'اليابان - طوكيو 🇯🇵',
-  FRANCE_PARIS: 'فرنسا - باريس 🇫🇷',
-  UK_LONDON: 'بريطانيا - لندن 🇬🇧',
-  USA_NEWYORK: 'أمريكا - نيويورك 🇺🇸',
-  BRAZIL_RIO: 'البرازيل - ريو 🇧🇷',
-  SPAIN_MADRID: 'إسبانيا - مدريد 🇪🇸',
-  ITALY_ROME: 'إيطاليا - روما 🇮🇹',
-  GERMANY_BERLIN: 'ألمانيا - برلين 🇩🇪',
+  BAGHDAD: 'محافظة بغداد 🇮🇶',
+  BASRA: 'محافظة البصرة 🇮🇶',
+  NINEVEH: 'محافظة نينوى 🇮🇶',
+  ERBIL: 'محافظة أربيل 🇮🇶',
+  SULAYMANIYAH: 'محافظة السليمانية 🇮🇶',
+  DUHOK: 'محافظة دهوك 🇮🇶',
+  KIRKUK: 'محافظة كركوك 🇮🇶',
+  BABYLON: 'محافظة بابل 🇮🇶',
+  KARBALA: 'محافظة كربلاء 🇮🇶',
+  NAJAF: 'محافظة النجف 🇮🇶',
+  ANBAR: 'محافظة الأنبار 🇮🇶',
+  DIYALA: 'محافظة ديالى 🇮🇶',
+  SALADIN: 'محافظة صلاح الدين 🇮🇶',
+  WASIT: 'محافظة واسط 🇮🇶',
+  MAYSAN: 'محافظة ميسان 🇮🇶',
+  DHI_QAR: 'محافظة ذي قار 🇮🇶',
+  MUTHANNA: 'محافظة المثنى 🇮🇶',
+  QADISIYYAH: 'محافظة القادسية 🇮🇶',
 };
 
-const WEATHER_INFO: Record<WeatherType, { name: string; icon: string; color: string }> = {
-  SUNNY_MORNING: { name: 'صباح مشمس منعش', icon: '☀️', color: 'text-amber-300' },
-  NOON_BRIGHT: { name: 'شمس الظهيرة المشرقة', icon: '☀️', color: 'text-yellow-300' },
-  GOLDEN_SUNSET: { name: 'شفق الغروب الذهبي', icon: '🌅', color: 'text-orange-400' },
-  LIGHT_RAIN_MIST: { name: 'رذاذ وضباب خفيف', icon: '🌧️', color: 'text-blue-300' },
-  BAGHDAD_STORM: { name: 'أمطار رعدية معتدلة', icon: '⛈️', color: 'text-indigo-300' },
-  BAGHDAD_DUST_STORM: { name: 'نسيم الصحراء الدافئ', icon: '🌪️', color: 'text-amber-400' },
-  KARRADA_NIGHT: { name: 'أنوار النيون الليلية', icon: '🌙', color: 'text-purple-300' },
+const WEATHER_INFO: Record<WeatherType, { name: string; alertText: string; icon: string; color: string; border: string }> = {
+  SUNNY_MORNING: { name: 'صباح بغدادي مشمس', alertText: 'أجواء مشمسة صافية ورؤية مثالية', icon: '☀️', color: 'text-amber-300', border: 'border-amber-500/40' },
+  NOON_BRIGHT: { name: 'شمس الظهيرة الساطعة', alertText: 'حرارة معتدلة وطريق مفتوح', icon: '☀️', color: 'text-yellow-300', border: 'border-yellow-500/40' },
+  GOLDEN_SUNSET: { name: 'غروب دجلة والفرات الذهبي', alertText: 'إضاءة ذهبية ساحرة على الجسور', icon: '🌅', color: 'text-orange-400', border: 'border-orange-500/40' },
+  LIGHT_RAIN_MIST: { name: 'رذاذ دجلة وضباب منعش', alertText: 'رذاذ منعش يبلل الأسفلت', icon: '🌧️', color: 'text-blue-300', border: 'border-blue-500/40' },
+  BAGHDAD_STORM: { name: 'أمطار ورعد ولمعان البرق', alertText: 'أمطار قوية ولمعان برق خفيف', icon: '⛈️', color: 'text-indigo-300', border: 'border-indigo-500/40' },
+  BAGHDAD_DUST_STORM: { name: 'موجة غبار وعاصفة ترابية', alertText: 'تنبيه: موجة تراب نشطة، انتبه للعوائق!', icon: '🌪️', color: 'text-amber-400', border: 'border-amber-500/60' },
+  KARRADA_NIGHT: { name: 'ليل الكرادة وأنوار النيون', alertText: 'ليالٍ بغدادية متوهجة بأنوار النيون', icon: '🌙', color: 'text-purple-300', border: 'border-purple-500/40' },
 };
 
 export const InGameHUD: React.FC<InGameHUDProps> = ({
@@ -77,9 +75,10 @@ export const InGameHUD: React.FC<InGameHUDProps> = ({
       prevWeatherRef.current = weather;
       setShowSideWeather(true);
       if (weatherTimerRef.current) clearTimeout(weatherTimerRef.current);
+      // Auto-hide side weather notification after exactly 3 seconds as requested
       weatherTimerRef.current = setTimeout(() => {
         setShowSideWeather(false);
-      }, 5000);
+      }, 3000);
     }
   }, [weather]);
 
@@ -90,23 +89,34 @@ export const InGameHUD: React.FC<InGameHUDProps> = ({
 
   const getPowerUpIcon = (type: string) => {
     switch (type) {
-      case 'MAGNET': return <Magnet className="w-3.5 h-3.5 text-yellow-400" />;
-      case 'SHIELD': return <Shield className="w-3.5 h-3.5 text-cyan-400" />;
-      case 'TURBO_SPEED': return <Zap className="w-3.5 h-3.5 text-red-400 animate-pulse" />;
-      case 'SUPER_JUMP': return <ArrowUpCircle className="w-3.5 h-3.5 text-emerald-400" />;
-      case 'TIME_SLOW': return <Clock className="w-3.5 h-3.5 text-indigo-400" />;
-      default: return <Sparkles className="w-3.5 h-3.5 text-amber-400" />;
+      case 'MAGNET': return <Magnet className="w-4 h-4 text-yellow-400" />;
+      case 'SHIELD': return <Shield className="w-4 h-4 text-cyan-400" />;
+      case 'TURBO_SPEED': return <Zap className="w-4 h-4 text-red-400 animate-pulse" />;
+      case 'SUPER_JUMP': return <ArrowUpCircle className="w-4 h-4 text-emerald-400" />;
+      case 'TIME_SLOW': return <Clock className="w-4 h-4 text-indigo-400" />;
+      default: return <Sparkles className="w-4 h-4 text-amber-400" />;
     }
   };
 
   const getPowerUpLabel = (type: string) => {
     switch (type) {
-      case 'MAGNET': return 'مغناطيس';
-      case 'SHIELD': return 'درع';
-      case 'TURBO_SPEED': return 'سرعة';
-      case 'SUPER_JUMP': return 'قفزة';
-      case 'TIME_SLOW': return 'إبطاء';
-      default: return 'مضاعف';
+      case 'MAGNET': return 'مغناطيس الدنانير';
+      case 'SHIELD': return 'درع الحماية';
+      case 'TURBO_SPEED': return 'صاروخ السرعة';
+      case 'SUPER_JUMP': return 'قفزة فائقة';
+      case 'TIME_SLOW': return 'إبطاء الزمن';
+      default: return 'مضاعف الدنانير';
+    }
+  };
+
+  const getPowerUpColor = (type: string) => {
+    switch (type) {
+      case 'MAGNET': return { border: 'border-yellow-500/60', bg: 'bg-yellow-500', text: 'text-yellow-300' };
+      case 'SHIELD': return { border: 'border-cyan-500/60', bg: 'bg-cyan-500', text: 'text-cyan-300' };
+      case 'TURBO_SPEED': return { border: 'border-red-500/60', bg: 'bg-red-500', text: 'text-red-300' };
+      case 'SUPER_JUMP': return { border: 'border-emerald-500/60', bg: 'bg-emerald-500', text: 'text-emerald-300' };
+      case 'TIME_SLOW': return { border: 'border-indigo-500/60', bg: 'bg-indigo-500', text: 'text-indigo-300' };
+      default: return { border: 'border-amber-500/60', bg: 'bg-amber-500', text: 'text-amber-300' };
     }
   };
 
@@ -133,25 +143,12 @@ export const InGameHUD: React.FC<InGameHUDProps> = ({
           </div>
         </div>
 
-        {/* Center Section: Country / World City & Active Power-Ups */}
+        {/* Center Section: Current Iraqi Governorate */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {/* Current Country / City */}
-          <div className="flex items-center gap-1 bg-amber-500/15 border border-amber-400/30 px-2.5 py-0.5 rounded-lg text-[11px] font-bold text-amber-300 whitespace-nowrap shrink-0">
+          <div className="flex items-center gap-1 bg-amber-500/20 border border-amber-400/40 px-3 py-1 rounded-lg text-xs font-bold text-amber-300 whitespace-nowrap shadow-sm">
             <span>📍</span>
-            <span>{BIOME_NAMES[biome] || 'العالم العربي'}</span>
+            <span>{BIOME_NAMES[biome] || 'محافظة بغداد 🇮🇶'}</span>
           </div>
-
-          {/* Active Power-ups */}
-          {activePowerUps.map((power) => (
-            <div
-              key={power.type}
-              className="flex items-center gap-1 bg-slate-800/90 border border-slate-600 px-1.5 py-0.5 rounded-lg text-[10px] font-bold text-slate-200 shrink-0"
-            >
-              {getPowerUpIcon(power.type)}
-              <span className="hidden sm:inline">{getPowerUpLabel(power.type)}</span>
-              <span className="font-mono text-amber-300">{Math.ceil(power.remainingTime)}ث</span>
-            </div>
-          ))}
         </div>
 
         {/* Left Section: Pause Button */}
@@ -167,16 +164,61 @@ export const InGameHUD: React.FC<InGameHUDProps> = ({
         </div>
       </div>
 
-      {/* Side Weather Notification - Positioned laterally so top stats text is never obstructed */}
-      <div className="absolute top-16 right-3 pointer-events-auto flex flex-col items-end gap-1">
+      {/* Left Side: Prominent Active Power-Ups Countdown Timers */}
+      {activePowerUps.length > 0 && (
+        <div className="absolute top-16 left-3 pointer-events-auto flex flex-col gap-2 max-w-[190px]">
+          {activePowerUps.map((power) => {
+            const colors = getPowerUpColor(power.type);
+            const remainingSecs = Math.max(0, power.remainingTime);
+            const totalDuration = Math.max(power.duration || 1, remainingSecs);
+            const percent = Math.min(100, Math.max(0, (remainingSecs / totalDuration) * 100));
+
+            return (
+              <div
+                key={power.type}
+                className={`bg-slate-950/90 backdrop-blur-md border ${colors.border} p-2 rounded-xl shadow-xl transition-all animate-in fade-in slide-in-from-left-2`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-1.5">
+                    {getPowerUpIcon(power.type)}
+                    <span className="text-[11px] font-bold text-white leading-tight">
+                      {getPowerUpLabel(power.type)}
+                    </span>
+                  </div>
+                  {/* Countdown Timer Display */}
+                  <span className={`font-mono font-black text-xs ${colors.text}`}>
+                    {remainingSecs.toFixed(1)}ث
+                  </span>
+                </div>
+
+                {/* Remaining Duration Progress Bar */}
+                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${colors.bg} rounded-full transition-all duration-100 ease-linear`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Right Side: Weather Notification Alert (Auto-disappears after 3 seconds) */}
+      <div className="absolute top-16 right-3 pointer-events-auto flex flex-col items-end gap-1 max-w-[220px]">
         {showSideWeather ? (
-          <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-700/80 shadow-xl backdrop-blur-md px-3 py-1.5 rounded-xl transition-all duration-300 animate-in fade-in slide-in-from-right-3">
-            <span className="text-base">{weatherData.icon}</span>
+          <div className={`flex items-start gap-2 bg-slate-950/95 border ${weatherData.border} shadow-2xl backdrop-blur-md p-2.5 rounded-xl transition-all duration-300 animate-in fade-in slide-in-from-right-3`}>
+            <span className="text-xl shrink-0 mt-0.5">{weatherData.icon}</span>
             <div className="flex flex-col text-right">
-              <span className="text-[9px] text-slate-400 font-bold">الطقس الحالي</span>
-              <span className={`text-[11px] font-bold ${weatherData.color}`}>
-                {weatherData.name}
-              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className={`text-[11px] font-black ${weatherData.color}`}>
+                  {weatherData.name}
+                </span>
+                <span className="text-[9px] font-mono text-slate-400 bg-slate-800 px-1 rounded">3ث</span>
+              </div>
+              <p className="text-[10px] text-slate-300 mt-0.5 leading-snug">
+                {weatherData.alertText}
+              </p>
             </div>
           </div>
         ) : (

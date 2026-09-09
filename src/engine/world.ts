@@ -35,31 +35,30 @@ interface WeatherProfile {
 }
 
 export const ALL_BIOMES: BiomeType[] = [
-  'EGYPT_CAIRO',
-  'UAE_DUBAI',
-  'SAUDI_RIYADH',
-  'MOROCCO_MARRAKESH',
-  'QATAR_DOHA',
-  'JORDAN_AMMAN',
-  'LEBANON_BEIRUT',
-  'IRAQ_BAGHDAD',
-  'KUWAIT_CITY',
-  'OMAN_MUSCAT',
-  'ALGERIA_ALGIERS',
-  'TUNISIA_TUNIS',
-  'JAPAN_TOKYO',
-  'FRANCE_PARIS',
-  'UK_LONDON',
-  'USA_NEWYORK',
-  'BRAZIL_RIO',
-  'SPAIN_MADRID',
-  'ITALY_ROME',
-  'GERMANY_BERLIN',
+  'BAGHDAD',
+  'BASRA',
+  'NINEVEH',
+  'ERBIL',
+  'SULAYMANIYAH',
+  'DUHOK',
+  'KIRKUK',
+  'BABYLON',
+  'KARBALA',
+  'NAJAF',
+  'ANBAR',
+  'DIYALA',
+  'SALADIN',
+  'WASIT',
+  'MAYSAN',
+  'DHI_QAR',
+  'MUTHANNA',
+  'QADISIYYAH',
 ];
 
-export function getRandomBiome(): BiomeType {
-  const index = Math.floor(Math.random() * ALL_BIOMES.length);
-  return ALL_BIOMES[index];
+export function getRandomBiome(excludeBiome?: BiomeType): BiomeType {
+  const available = excludeBiome ? ALL_BIOMES.filter((b) => b !== excludeBiome) : ALL_BIOMES;
+  const index = Math.floor(Math.random() * available.length);
+  return available[index];
 }
 
 export class WorldManager {
@@ -435,67 +434,61 @@ export class WorldManager {
   public setBiome(biome: BiomeType) {
     this.currentBiome = biome;
     
-    // Match each Country Biome with appropriate atmospheric weather
+    // Match each Iraqi Governorate with its authentic atmospheric weather
     switch (biome) {
-      case 'EGYPT_CAIRO':
+      case 'BAGHDAD':
+        this.setWeather('SUNNY_MORNING');
+        break;
+      case 'BASRA':
         this.setWeather('GOLDEN_SUNSET');
         break;
-      case 'UAE_DUBAI':
+      case 'NINEVEH':
+        this.setWeather('LIGHT_RAIN_MIST');
+        break;
+      case 'ERBIL':
+        this.setWeather('SUNNY_MORNING');
+        break;
+      case 'SULAYMANIYAH':
+        this.setWeather('LIGHT_RAIN_MIST');
+        break;
+      case 'DUHOK':
+        this.setWeather('LIGHT_RAIN_MIST');
+        break;
+      case 'KIRKUK':
         this.setWeather('KARRADA_NIGHT');
         break;
-      case 'SAUDI_RIYADH':
+      case 'BABYLON':
+        this.setWeather('GOLDEN_SUNSET');
+        break;
+      case 'KARBALA':
+        this.setWeather('KARRADA_NIGHT');
+        break;
+      case 'NAJAF':
         this.setWeather('NOON_BRIGHT');
         break;
-      case 'MOROCCO_MARRAKESH':
-        this.setWeather('GOLDEN_SUNSET');
+      case 'ANBAR':
+        this.setWeather('BAGHDAD_DUST_STORM');
         break;
-      case 'QATAR_DOHA':
+      case 'DIYALA':
         this.setWeather('SUNNY_MORNING');
         break;
-      case 'JORDAN_AMMAN':
-        this.setWeather('SUNNY_MORNING');
-        break;
-      case 'LEBANON_BEIRUT':
-        this.setWeather('LIGHT_RAIN_MIST');
-        break;
-      case 'IRAQ_BAGHDAD':
-        this.setWeather('SUNNY_MORNING');
-        break;
-      case 'KUWAIT_CITY':
+      case 'SALADIN':
         this.setWeather('NOON_BRIGHT');
         break;
-      case 'OMAN_MUSCAT':
+      case 'WASIT':
         this.setWeather('GOLDEN_SUNSET');
         break;
-      case 'ALGERIA_ALGIERS':
-        this.setWeather('SUNNY_MORNING');
-        break;
-      case 'TUNISIA_TUNIS':
+      case 'MAYSAN':
         this.setWeather('LIGHT_RAIN_MIST');
         break;
-      case 'JAPAN_TOKYO':
-        this.setWeather('KARRADA_NIGHT');
-        break;
-      case 'FRANCE_PARIS':
-        this.setWeather('LIGHT_RAIN_MIST');
-        break;
-      case 'UK_LONDON':
-        this.setWeather('BAGHDAD_STORM');
-        break;
-      case 'USA_NEWYORK':
-        this.setWeather('KARRADA_NIGHT');
-        break;
-      case 'BRAZIL_RIO':
-        this.setWeather('SUNNY_MORNING');
-        break;
-      case 'SPAIN_MADRID':
+      case 'DHI_QAR':
         this.setWeather('GOLDEN_SUNSET');
         break;
-      case 'ITALY_ROME':
-        this.setWeather('SUNNY_MORNING');
+      case 'MUTHANNA':
+        this.setWeather('NOON_BRIGHT');
         break;
-      case 'GERMANY_BERLIN':
-        this.setWeather('LIGHT_RAIN_MIST');
+      case 'QADISIYYAH':
+        this.setWeather('SUNNY_MORNING');
         break;
       default:
         this.setWeather('SUNNY_MORNING');

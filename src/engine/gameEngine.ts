@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { BiomeType, GameSettings, PlayerData, PowerUpType, RunStats, ActivePowerUp, PlayerCustomization, WeatherType } from '../types';
 import { HammoudiCharacter } from './character';
-import { WorldManager, getRandomBiome } from './world';
+import { WorldManager, getRandomBiome, ALL_BIOMES } from './world';
 import { ParticleFXManager } from './particleFX';
 import { audioManager } from './audio';
 import { getSkillValue } from '../data/skills';
@@ -72,24 +72,8 @@ export class GameEngine {
 
   // Biome Rotation Distance Counter
   private lastBiomeIndex: number = 0;
-  private biomesList: BiomeType[] = [
-    'KARKH_MANSOUR',
-    'RUSAFA_MUTANABBI_QISHLA',
-    'KARKH_KADHIMIYA',
-    'RUSAFA_RASHEED_TAHRIR',
-    'KARKH_JADRIYA_BRIDGE',
-    'RUSAFA_KARRADA_NIGHT',
-    'KARKH_YARMOUK_DORA',
-    'RUSAFA_ADHAMIYA_RIVER',
-    'RUSAFA_PALESTINE_ZAYOUNA',
-    'KARKH_AMIRIYAH_KHADRAA',
-    'RUSAFA_SALIHIYA_SINAK',
-    'KARKH_SAYDIYA_BAYAA',
-    'KARKH_GHAZALIYA_SHUULA',
-    'RUSAFA_BAB_SHARQI_SAADOUN',
-    'RUSAFA_ZAAFARANIYA_DIYALA',
-    'KARKH_HAI_ALJAMIA',
-  ];
+  private biomesList: BiomeType[] = ALL_BIOMES;
+  public lastLostBiome: BiomeType | null = null;
 
   constructor(canvas: HTMLCanvasElement, playerData: PlayerData, callbacks: GameEngineCallbacks) {
     this.playerData = playerData;
@@ -167,8 +151,8 @@ export class GameEngine {
     this.scoreMultiplier = 1;
     this.activePowerUps.clear();
     
-    // Pick a fresh random starting country every single time
-    const startingBiome = getRandomBiome();
+    // Pick a fresh random starting Iraqi governorate (excluding the one just lost in previous session)
+    const startingBiome = getRandomBiome(this.lastLostBiome || undefined);
     this.runStats = this.getInitialRunStats(startingBiome);
 
     this.character.resetToStart();
@@ -324,8 +308,8 @@ export class GameEngine {
       slideSkillBonus
     );
 
-    // 5. Update World Chunks & Dynamic Biome Rotation (Every 500 meters exactly)
-    const currentBiomeIdx = Math.floor(this.distanceRan / 500) % this.biomesList.length;
+    // 5. Update World Chunks & Dynamic Biome Rotation (Every 1500 meters exactly)
+    const currentBiomeIdx = Math.floor(this.distanceRan / 1500) % this.biomesList.length;
     if (currentBiomeIdx !== this.lastBiomeIndex) {
       this.lastBiomeIndex = currentBiomeIdx;
       const nextBiome = this.biomesList[currentBiomeIdx];
@@ -562,9 +546,13 @@ export class GameEngine {
         continue;
       }
 
-      // If player is airborne or sliding as they approach or enter the obstacle, mark permanently cleared
-      if (pZ >= obs.mesh.position.z - 0.6) {
-        if (!this.character.isGrounded || pY > 0.18 || isSliding || this.character.slideTimer > 0) {
+      // If player is safely jumping over a jumpable obstacle or sliding under a slideable obstacle
+      if (pZ >= obs.mesh.position.z - 0.9) {
+        if (obs.canJump && (!this.character.isGrounded || pY > 0.12 || this.character.currentAction === 'JUMP')) {
+          (obs as any).isCleared = true;
+          continue;
+        }
+        if (obs.canSlide && (isSliding || this.character.slideTimer > 0 || this.character.currentAction === 'SLIDE')) {
           (obs as any).isCleared = true;
           continue;
         }
@@ -584,46 +572,30 @@ export class GameEngine {
         continue;
       }
 
-      // If player is airborne at a safe jumping clearance over obstacle:
-      if (!this.character.isGrounded && pY > 0.35) {
+      // If player has Super Jump power-up or high clearance:
+      if (pY > 1.2 || (this.activePowerUps.has('SUPER_JUMP') && pY > 0.8)) {
         (obs as any).isCleared = true;
         continue;
       }
 
       // Tight, fair collision thresholds
-      const halfWidth = (obs.width / 2) * 0.52;
-      const halfDepth = (obs.depth / 2) * 0.50;
+      const halfWidth = (obs.width / 2) * 0.50;
+      const halfDepth = (obs.depth / 2) * 0.48;
 
       if (dx < halfWidth && dz < halfDepth) {
-        // Double-check clearance at collision boundary:
-        if (pZ >= obs.mesh.position.z - 0.1) {
-          if (!this.character.isGrounded || pY > 0.15 || isSliding || this.character.slideTimer > 0) {
+        // Vertical collision checks with high precision:
+        if (obs.canJump) {
+          if (!this.character.isGrounded || pY > 0.12 || this.character.currentAction === 'JUMP') {
             (obs as any).isCleared = true;
             continue;
           }
         }
 
-        // Vertical collision checks:
-        // Jumpable obstacles (traffic barriers, fruit crates, carts, potholes, gravel):
-        if (obs.canJump) {
-          if (!this.character.isGrounded || pY > 0.15 || this.character.currentAction === 'JUMP') {
-            (obs as any).isCleared = true; // Permanently cleared so runner is safe on landing
-            continue;
-          }
-        }
-
-        // Slideable obstacles (low overhead bars, awnings, hanging utility cables):
         if (obs.canSlide) {
           if (isSliding || this.character.slideTimer > 0 || this.character.currentAction === 'SLIDE') {
             (obs as any).isCleared = true;
             continue;
           }
-        }
-
-        // Super Jump power-up allows clearing any obstacle with high altitude
-        if (this.activePowerUps.has('SUPER_JUMP') && pY > 1.0) {
-          (obs as any).isCleared = true;
-          continue;
         }
 
         // Collision Occurred!
@@ -649,6 +621,7 @@ export class GameEngine {
   }
 
   private handlePlayerCrash() {
+    this.lastLostBiome = this.worldManager.currentBiome;
     this.character.currentAction = 'CRASH';
     audioManager.playCrash();
     this.triggerCameraShake(0.9);
@@ -726,14 +699,22 @@ export class GameEngine {
 
   // ==================== USER CONTROLS ====================
   public handleSwipeLeft() {
-    // Reversed player movement as requested by the user
-    this.character.moveRight();
+    const invert = this.playerData.settings.invertControls ?? true;
+    if (invert) {
+      this.character.moveRight();
+    } else {
+      this.character.moveLeft();
+    }
     audioManager.playSwipe();
   }
 
   public handleSwipeRight() {
-    // Reversed player movement as requested by the user
-    this.character.moveLeft();
+    const invert = this.playerData.settings.invertControls ?? true;
+    if (invert) {
+      this.character.moveLeft();
+    } else {
+      this.character.moveRight();
+    }
     audioManager.playSwipe();
   }
 

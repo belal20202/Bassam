@@ -36,184 +36,188 @@ export class AudioManager {
   public musicVolume: number = 0.7;
   public sfxVolume: number = 0.85;
 
-  private currentBiome: BiomeType = 'KARKH_MANSOUR';
+  private currentBiome: BiomeType = 'BAGHDAD';
   private targetSpeedMultiplier: number = 1.0;
 
-  // Biome-specific Baghdad regional themes and authentic Maqamat
+  // Calm, serene Iraqi Maqamat instrumental themes for all 18 Governorates
   private biomeThemes: Record<BiomeType, BiomeMusicalTheme> = {
-    // 1. حي المنصور - إيقاع الجوبي البغدادي الحديث والحيوي
-    KARKH_MANSOUR: {
-      name: 'حي المنصور',
-      maqamName: 'مقام البيات البغدادي الإيقاعي',
-      tempoBPM: 126,
-      melodyScale: [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25],
-      bassScale: [73.42, 82.41, 98.00, 110.00, 123.47],
-      rhythmStyle: 'CHOBI',
-      leadInstrument: 'SYNTH',
-      melodyDensity: 2,
-    },
-    // 2. شارع المتنبي والقشلة - مقام الراست العريق مع العود والقانون
-    RUSAFA_MUTANABBI_QISHLA: {
-      name: 'شارع المتنبي والقشلة',
-      maqamName: 'مقام الراست البغدادي الأصيل',
-      tempoBPM: 118,
-      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33],
+    BAGHDAD: {
+      name: 'بغداد - دار السلام',
+      maqamName: 'مقام الراست البغدادي الهادئ الأصيل',
+      tempoBPM: 98,
+      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25],
       bassScale: [65.41, 73.42, 87.31, 98.00, 110.00],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'OUD',
       melodyDensity: 1,
     },
-    // 3. الكاظمية التراثية - مقام الحجاز الروحاني مع طبل الدهلة والرنين
-    KARKH_KADHIMIYA: {
-      name: 'الكاظمية التراثية',
-      maqamName: 'مقام الحجاز الروحاني التراثي',
-      tempoBPM: 116,
-      melodyScale: [293.66, 311.13, 369.99, 392.00, 440.00, 466.16, 523.25, 587.33, 622.25],
-      bassScale: [73.42, 77.78, 92.50, 98.00, 110.00],
-      rhythmStyle: 'HERITAGE',
-      leadInstrument: 'NAY',
-      melodyDensity: 2,
-    },
-    // 4. شارع الرشيد وساحة التحرير - إيقاع وطني ملحمي ونحاسيات
-    RUSAFA_RASHEED_TAHRIR: {
-      name: 'شارع الرشيد والتحرير',
-      maqamName: 'مقام العجم الملحمي الحماسي',
-      tempoBPM: 128,
-      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 659.25],
-      bassScale: [65.41, 73.42, 87.31, 98.00, 130.81],
-      rhythmStyle: 'BALADI',
-      leadInstrument: 'BRASS',
-      melodyDensity: 2,
-    },
-    // 5. جسر الجادرية ونهر دجلة - أنغام العود العذبة مع نسيم دجلة
-    KARKH_JADRIYA_BRIDGE: {
-      name: 'جسر الجادرية ودجلة',
-      maqamName: 'مقام النهاوند العذب',
-      tempoBPM: 120,
-      melodyScale: [261.63, 293.66, 311.13, 349.23, 392.00, 415.30, 493.88, 523.25, 622.25],
+    BASRA: {
+      name: 'البصرة - الفيحاء وشط العرب',
+      maqamName: 'مقام النهاوند الهادئ العذب',
+      tempoBPM: 96,
+      melodyScale: [261.63, 293.66, 311.13, 349.23, 392.00, 415.30, 493.88, 523.25],
       bassScale: [65.41, 73.42, 77.78, 87.31, 98.00],
       rhythmStyle: 'SAMAI',
-      leadInstrument: 'OUD',
-      melodyDensity: 2,
-    },
-    // 6. الكرادة وليالي النيون - سينثويف بغدادي ليلي متوهج
-    RUSAFA_KARRADA_NIGHT: {
-      name: 'الكرادة وليالي النيون',
-      maqamName: 'سينث الكرادة الليلي المتوهج',
-      tempoBPM: 130,
-      melodyScale: [329.63, 392.00, 440.00, 493.88, 587.33, 659.25, 783.99, 880.00],
-      bassScale: [82.41, 98.00, 110.00, 123.47, 146.83],
-      rhythmStyle: 'SYNTHWAVE',
-      leadInstrument: 'SYNTH',
-      melodyDensity: 3,
-    },
-    // 7. الأعظمية وكورنيش أبي نواس - تراث دجلة وشعر أبي نواس
-    RUSAFA_ADHAMIYA_RIVER: {
-      name: 'الأعظمية وأبي نواس',
-      maqamName: 'مقام السيكاه البغدادي الشجي',
-      tempoBPM: 122,
-      melodyScale: [277.18, 311.13, 349.23, 392.00, 415.30, 466.16, 554.37, 622.25],
-      bassScale: [69.30, 77.78, 87.31, 98.00, 103.83],
-      rhythmStyle: 'HERITAGE',
       leadInstrument: 'QANUN',
-      melodyDensity: 2,
+      melodyDensity: 1,
     },
-    // 8. اليرموك والدورة - نبض الشوارع السريعة والحداثة
-    KARKH_YARMOUK_DORA: {
-      name: 'اليرموك والدورة',
-      maqamName: 'مقام الكرد الديناميكي السريع',
-      tempoBPM: 128,
-      melodyScale: [293.66, 311.13, 349.23, 392.00, 440.00, 466.16, 523.25, 587.33, 622.25],
-      bassScale: [73.42, 77.78, 87.31, 98.00, 110.00],
-      rhythmStyle: 'CHOBI',
-      leadInstrument: 'SYNTH',
-      melodyDensity: 2,
-    },
-    // 9. شارع فلسطين وزيونة - احتفالية الدبكة والجوبي البغدادي
-    RUSAFA_PALESTINE_ZAYOUNA: {
-      name: 'شارع فلسطين وزيونة',
-      maqamName: 'جوبي بغداد الاحتفالي الصاخب',
-      tempoBPM: 132,
-      melodyScale: [293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 554.37, 587.33],
-      bassScale: [73.42, 82.41, 92.50, 98.00, 110.00],
-      rhythmStyle: 'CHOBI',
-      leadInstrument: 'BRASS',
-      melodyDensity: 3,
-    },
-    // 10. العامرية وحي الخضراء
-    KARKH_AMIRIYAH_KHADRAA: {
-      name: 'العامرية وحي الخضراء',
-      maqamName: 'مقام الحجاز كار المبهج',
-      tempoBPM: 125,
-      melodyScale: [261.63, 277.18, 329.63, 349.23, 392.00, 415.30, 493.88, 523.25],
-      bassScale: [65.41, 69.30, 82.41, 87.31, 98.00],
-      rhythmStyle: 'BALADI',
-      leadInstrument: 'SYNTH',
-      melodyDensity: 2,
-    },
-    // 11. السيدية والبياع
-    KARKH_SAYDIYA_BAYAA: {
-      name: 'السيدية والبياع',
-      maqamName: 'إيقاع الأسواق البغدادية النابضة',
-      tempoBPM: 126,
-      melodyScale: [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33],
-      bassScale: [73.42, 82.41, 87.31, 98.00, 110.00],
-      rhythmStyle: 'CHOBI',
-      leadInstrument: 'OUD',
-      melodyDensity: 2,
-    },
-    // 12. الغزالية والشعلة
-    KARKH_GHAZALIYA_SHUULA: {
-      name: 'الغزالية والشعلة',
-      maqamName: 'مقام الصبا الشجي التراثي',
-      tempoBPM: 124,
-      melodyScale: [293.66, 311.13, 349.23, 369.99, 440.00, 466.16, 523.25, 587.33],
-      bassScale: [73.42, 77.78, 87.31, 92.50, 110.00],
+    NINEVEH: {
+      name: 'نينوى - أم الربيعين والحدباء',
+      maqamName: 'مقام البيات الموصلي الهادئ',
+      tempoBPM: 94,
+      melodyScale: [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25],
+      bassScale: [73.42, 82.41, 98.00, 110.00, 123.47],
       rhythmStyle: 'HERITAGE',
       leadInstrument: 'NAY',
-      melodyDensity: 2,
+      melodyDensity: 1,
     },
-    // 13. حي الجامعة وشارع الربيع
-    KARKH_HAI_ALJAMIA: {
-      name: 'حي الجامعة والربيع',
-      maqamName: 'مقام اللامي البغدادي الفريد',
-      tempoBPM: 127,
-      melodyScale: [293.66, 311.13, 349.23, 392.00, 415.30, 466.16, 523.25, 587.33],
-      bassScale: [73.42, 77.78, 87.31, 98.00, 103.83],
-      rhythmStyle: 'CHOBI',
-      leadInstrument: 'SYNTH',
-      melodyDensity: 2,
+    ERBIL: {
+      name: 'أربيل - قلعة التاريخ',
+      maqamName: 'مقام الكرد الجبلي الهادئ',
+      tempoBPM: 98,
+      melodyScale: [293.66, 311.13, 349.23, 392.00, 440.00, 466.16, 523.25],
+      bassScale: [73.42, 77.78, 87.31, 98.00, 110.00],
+      rhythmStyle: 'SAMAI',
+      leadInstrument: 'OUD',
+      melodyDensity: 1,
     },
-    // 14. الصالحية وجسر السنك
-    RUSAFA_SALIHIYA_SINAK: {
-      name: 'الصالحية وجسر السنك',
-      maqamName: 'مقام البنجكاه التراثي العريق',
-      tempoBPM: 119,
-      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 466.16, 523.25],
+    SULAYMANIYAH: {
+      name: 'السليمانية - عروس الثقافة',
+      maqamName: 'أنغام شجية هادئة مع نسيم الجبال',
+      tempoBPM: 92,
+      melodyScale: [261.63, 293.66, 311.13, 349.23, 392.00, 440.00, 523.25],
+      bassScale: [65.41, 73.42, 87.31, 98.00],
+      rhythmStyle: 'SAMAI',
+      leadInstrument: 'NAY',
+      melodyDensity: 1,
+    },
+    DUHOK: {
+      name: 'دهوك - شلالات وزلال الطبيعة',
+      maqamName: 'مقام النهاوند الجبلي العذب',
+      tempoBPM: 94,
+      melodyScale: [261.63, 293.66, 311.13, 349.23, 392.00, 440.00, 523.25],
+      bassScale: [65.41, 73.42, 87.31, 98.00],
+      rhythmStyle: 'HERITAGE',
+      leadInstrument: 'NAY',
+      melodyDensity: 1,
+    },
+    KIRKUK: {
+      name: 'كركوك - مدينة القلعة والتآخي',
+      maqamName: 'مقام البنجكاه العريق المتأني',
+      tempoBPM: 96,
+      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 466.16],
       bassScale: [65.41, 73.42, 82.41, 87.31, 98.00],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'QANUN',
       melodyDensity: 1,
     },
-    // 15. الباب الشرقي وشارع السعدون
-    RUSAFA_BAB_SHARQI_SAADOUN: {
-      name: 'الباب الشرقي والسعدون',
-      maqamName: 'مقام الدشت المبهج',
-      tempoBPM: 125,
-      melodyScale: [293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 523.25, 587.33],
-      bassScale: [73.42, 82.41, 92.50, 98.00, 110.00],
-      rhythmStyle: 'BALADI',
-      leadInstrument: 'BRASS',
-      melodyDensity: 2,
-    },
-    // 16. الزعفرانية وضفاف نهر ديالى
-    RUSAFA_ZAAFARANIYA_DIYALA: {
-      name: 'الزعفرانية ونهر ديالى',
-      maqamName: 'مقام الحكيمي الريفي الأصيل',
-      tempoBPM: 120,
-      melodyScale: [261.63, 293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 523.25],
-      bassScale: [65.41, 73.42, 82.41, 92.50, 98.00],
+    BABYLON: {
+      name: 'بابل - الحلة وأسد بابل',
+      maqamName: 'مقام الراست البابلي التأملي',
+      tempoBPM: 96,
+      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88],
+      bassScale: [65.41, 73.42, 87.31, 98.00, 110.00],
       rhythmStyle: 'HERITAGE',
+      leadInstrument: 'OUD',
+      melodyDensity: 1,
+    },
+    KARBALA: {
+      name: 'كربلاء المقدسة',
+      maqamName: 'مقام الحجاز الروحاني الهادئ الخاشع',
+      tempoBPM: 90,
+      melodyScale: [293.66, 311.13, 369.99, 392.00, 440.00, 466.16, 523.25],
+      bassScale: [73.42, 77.78, 92.50, 98.00, 110.00],
+      rhythmStyle: 'HERITAGE',
+      leadInstrument: 'NAY',
+      melodyDensity: 1,
+    },
+    NAJAF: {
+      name: 'النجف الأشرف - وادي السلام',
+      maqamName: 'مقام الصبا الروحاني الهادئ',
+      tempoBPM: 90,
+      melodyScale: [293.66, 311.13, 349.23, 369.99, 440.00, 466.16, 523.25],
+      bassScale: [73.42, 77.78, 87.31, 92.50, 110.00],
+      rhythmStyle: 'HERITAGE',
+      leadInstrument: 'NAY',
+      melodyDensity: 1,
+    },
+    ANBAR: {
+      name: 'الأنبار - الرمادي والفرات الأصيل',
+      maqamName: 'مقام البياتي الفراتي الهادئ',
+      tempoBPM: 96,
+      melodyScale: [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25],
+      bassScale: [73.42, 82.41, 98.00, 110.00],
+      rhythmStyle: 'SAMAI',
+      leadInstrument: 'OUD',
+      melodyDensity: 1,
+    },
+    DIYALA: {
+      name: 'ديالى - بعقوبة وبساتين البرتقال',
+      maqamName: 'مقام السيكاه العذب المريح',
+      tempoBPM: 96,
+      melodyScale: [277.18, 311.13, 349.23, 392.00, 415.30, 466.16, 554.37],
+      bassScale: [69.30, 77.78, 87.31, 98.00],
+      rhythmStyle: 'SAMAI',
+      leadInstrument: 'QANUN',
+      melodyDensity: 1,
+    },
+    SALADIN: {
+      name: 'صلاح الدين - ملوية سامراء وتكريت',
+      maqamName: 'مقام العجم المتأني الشامخ',
+      tempoBPM: 98,
+      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88],
+      bassScale: [65.41, 73.42, 87.31, 98.00],
+      rhythmStyle: 'HERITAGE',
+      leadInstrument: 'NAY',
+      melodyDensity: 1,
+    },
+    WASIT: {
+      name: 'واسط - الكوت وسد دجلة',
+      maqamName: 'مقام النهاوند الرقيق على ضفاف دجلة',
+      tempoBPM: 94,
+      melodyScale: [261.63, 293.66, 311.13, 349.23, 392.00, 415.30, 493.88],
+      bassScale: [65.41, 73.42, 77.78, 87.31],
+      rhythmStyle: 'SAMAI',
+      leadInstrument: 'OUD',
+      melodyDensity: 1,
+    },
+    MAYSAN: {
+      name: 'ميسان - العمارة وعروس الأهوار',
+      maqamName: 'مقام الحكيمي الريفي الهادئ للأهوار',
+      tempoBPM: 92,
+      melodyScale: [261.63, 293.66, 329.63, 369.99, 392.00, 440.00, 493.88],
+      bassScale: [65.41, 73.42, 82.41, 92.50],
+      rhythmStyle: 'HERITAGE',
+      leadInstrument: 'NAY',
+      melodyDensity: 1,
+    },
+    DHI_QAR: {
+      name: 'ذي قار - زقورة أور وحضارة سومر',
+      maqamName: 'مقام سومري شجي هادئ وقور',
+      tempoBPM: 94,
+      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 523.25],
+      bassScale: [65.41, 73.42, 87.31, 98.00],
+      rhythmStyle: 'HERITAGE',
+      leadInstrument: 'QANUN',
+      melodyDensity: 1,
+    },
+    MUTHANNA: {
+      name: 'المثنى - السماوة وبحيرة ساوة',
+      maqamName: 'مقام اللامي الجنوبي الهادئ التأملي',
+      tempoBPM: 94,
+      melodyScale: [293.66, 311.13, 349.23, 392.00, 415.30, 466.16, 523.25],
+      bassScale: [73.42, 77.78, 87.31, 98.00],
+      rhythmStyle: 'SAMAI',
+      leadInstrument: 'OUD',
+      melodyDensity: 1,
+    },
+    QADISIYYAH: {
+      name: 'القادسية - الديوانية والفرات الأوسط',
+      maqamName: 'مقام الراست الفراتي الهادئ العذب',
+      tempoBPM: 96,
+      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88],
+      bassScale: [65.41, 73.42, 87.31, 98.00],
+      rhythmStyle: 'SAMAI',
       leadInstrument: 'NAY',
       melodyDensity: 1,
     },
@@ -317,7 +321,7 @@ export class AudioManager {
   private startAmbientBed() {
     if (!this.ctx || !this.ambientGain) return;
 
-    // Create a 5-second seamless looped pink/brown noise buffer for natural ambient flow
+    // Create a 5-second seamless looped soft noise buffer for calm natural breeze
     const sampleRate = this.ctx.sampleRate;
     const bufferSize = sampleRate * 5;
     const buffer = this.ctx.createBuffer(1, bufferSize, sampleRate);
@@ -326,9 +330,8 @@ export class AudioManager {
     let lastOut = 0.0;
     for (let i = 0; i < bufferSize; i++) {
       const white = Math.random() * 2 - 1;
-      // Brown/Pink integrated noise curve
-      lastOut = (lastOut + 0.02 * white) / 1.02;
-      data[i] = lastOut * 3.5;
+      lastOut = (lastOut + 0.015 * white) / 1.02;
+      data[i] = lastOut * 0.4;
     }
 
     this.ambientBedSource = this.ctx.createBufferSource();
@@ -337,10 +340,10 @@ export class AudioManager {
 
     this.ambientBedFilter = this.ctx.createBiquadFilter();
     this.ambientBedFilter.type = 'lowpass';
-    this.ambientBedFilter.frequency.setValueAtTime(320, this.ctx.currentTime);
+    this.ambientBedFilter.frequency.setValueAtTime(220, this.ctx.currentTime);
 
     this.ambientBedGain = this.ctx.createGain();
-    this.ambientBedGain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+    this.ambientBedGain.gain.setValueAtTime(0.06, this.ctx.currentTime);
 
     this.ambientBedSource.connect(this.ambientBedFilter);
     this.ambientBedFilter.connect(this.ambientBedGain);
@@ -356,48 +359,37 @@ export class AudioManager {
     if (!this.ctx || !this.ambientBedFilter || !this.ambientBedGain) return;
     const t = this.ctx.currentTime;
 
-    // Adapt continuous atmospheric filtering to location character
+    // Adapt soft atmospheric bed filtering to Iraqi governorates
     switch (biome) {
-      case 'KARKH_MANSOUR':
-      case 'KARKH_YARMOUK_DORA':
-      case 'KARKH_AMIRIYAH_KHADRAA':
-      case 'KARKH_HAI_ALJAMIA':
-        // Urban Highway & Wide Avenues: Deeper rumble & mid air displacement
-        this.ambientBedFilter.frequency.setTargetAtTime(420, t, 0.6);
-        this.ambientBedGain.gain.setTargetAtTime(0.24, t, 0.6);
+      case 'BASRA':
+      case 'MAYSAN':
+      case 'WASIT':
+      case 'DHI_QAR':
+        // River / Marsh calm whisper
+        this.ambientBedFilter.frequency.setTargetAtTime(260, t, 0.6);
+        this.ambientBedGain.gain.setTargetAtTime(0.07, t, 0.6);
         break;
 
-      case 'RUSAFA_MUTANABBI_QISHLA':
-      case 'RUSAFA_RASHEED_TAHRIR':
-      case 'RUSAFA_BAB_SHARQI_SAADOUN':
-      case 'RUSAFA_SALIHIYA_SINAK':
-        // Heritage Old Baghdad: Warm acoustic souq resonance
-        this.ambientBedFilter.frequency.setTargetAtTime(580, t, 0.6);
-        this.ambientBedGain.gain.setTargetAtTime(0.22, t, 0.6);
+      case 'DUHOK':
+      case 'ERBIL':
+      case 'SULAYMANIYAH':
+      case 'NINEVEH':
+        // Cool northern mountain breeze
+        this.ambientBedFilter.frequency.setTargetAtTime(240, t, 0.6);
+        this.ambientBedGain.gain.setTargetAtTime(0.06, t, 0.6);
         break;
 
-      case 'KARKH_JADRIYA_BRIDGE':
-      case 'KARKH_KADHIMIYA':
-      case 'RUSAFA_ADHAMIYA_RIVER':
-      case 'RUSAFA_ZAAFARANIYA_DIYALA':
-        // Tigris Riverbank & Breezes: Soft open river whisper
-        this.ambientBedFilter.frequency.setTargetAtTime(280, t, 0.6);
-        this.ambientBedGain.gain.setTargetAtTime(0.19, t, 0.6);
+      case 'KARBALA':
+      case 'NAJAF':
+        // Serene spiritual peace
+        this.ambientBedFilter.frequency.setTargetAtTime(180, t, 0.6);
+        this.ambientBedGain.gain.setTargetAtTime(0.05, t, 0.6);
         break;
 
-      case 'RUSAFA_KARRADA_NIGHT':
-      case 'RUSAFA_PALESTINE_ZAYOUNA':
-        // Electric Night & Bustling Commercial Districts: Bright vibrant hum
-        this.ambientBedFilter.frequency.setTargetAtTime(500, t, 0.6);
-        this.ambientBedGain.gain.setTargetAtTime(0.25, t, 0.6);
-        break;
-
-      case 'KARKH_SAYDIYA_BAYAA':
-      case 'KARKH_GHAZALIYA_SHUULA':
       default:
-        // Vibrant Local Bazaars
-        this.ambientBedFilter.frequency.setTargetAtTime(450, t, 0.6);
-        this.ambientBedGain.gain.setTargetAtTime(0.23, t, 0.6);
+        // Baghdad and central/western governorates calm atmosphere
+        this.ambientBedFilter.frequency.setTargetAtTime(220, t, 0.6);
+        this.ambientBedGain.gain.setTargetAtTime(0.06, t, 0.6);
         break;
     }
   }
@@ -405,8 +397,8 @@ export class AudioManager {
   private scheduleNextAmbientSpotSound() {
     if (!this.isAmbientPlaying) return;
 
-    // Trigger spot sound every 2.8 to 5.2 seconds for lively Baghdad atmosphere
-    const delay = 2800 + Math.random() * 2400;
+    // Trigger calm spot sound every 4.5 to 8 seconds for a peaceful relaxing atmosphere
+    const delay = 4500 + Math.random() * 3500;
     this.ambientSpotTimer = setTimeout(() => {
       if (this.isAmbientPlaying) {
         this.triggerBiomeSpotSound(this.currentBiome);
@@ -419,70 +411,59 @@ export class AudioManager {
     if (!this.ctx || !this.ambientGain) return;
     const t = this.ctx.currentTime;
 
+    // Calm spot sounds: Gentle tea glass clink, peaceful river ripple, pleasant birds cooing
     switch (biome) {
-      // 1. MANSOUR & MODERN DISTRICTS: Baghdad Taxi Horns & Road Pass-by
-      case 'KARKH_MANSOUR':
-      case 'KARKH_YARMOUK_DORA':
-      case 'KARKH_AMIRIYAH_KHADRAA':
-      case 'KARKH_HAI_ALJAMIA': {
+      case 'BASRA':
+      case 'MAYSAN':
+      case 'WASIT':
+      case 'DHI_QAR': {
         const rand = Math.random();
-        if (rand < 0.65) {
-          this.playBaghdadTaxiHorn(t);
+        if (rand < 0.5) {
+          this.playRiverBreezeLap(t);
         } else {
-          this.playDistantEngineRev(t);
+          this.playTigrisPigeonsCooing(t);
         }
         break;
       }
 
-      // 2. HERITAGE SOUQS (Mutanabbi, Rasheed, Bab Sharqi): Tea Spoon Clink & Copper Hammering
-      case 'RUSAFA_MUTANABBI_QISHLA':
-      case 'RUSAFA_RASHEED_TAHRIR':
-      case 'RUSAFA_BAB_SHARQI_SAADOUN':
-      case 'RUSAFA_SALIHIYA_SINAK': {
+      case 'BAGHDAD':
+      case 'BABYLON':
+      case 'DIYALA':
+      case 'SALADIN': {
         const rand = Math.random();
         if (rand < 0.55) {
           this.playBaghdadiTeaGlassClink(t);
         } else {
-          this.playSafafirCopperClink(t);
+          this.playVendorChime(t);
         }
         break;
       }
 
-      // 3. TIGRIS RIVER & BRIDGES (Jadriya, Adhamiya, Kadhimiya): Water Ripples & Pigeons Cooing
-      case 'KARKH_JADRIYA_BRIDGE':
-      case 'KARKH_KADHIMIYA':
-      case 'RUSAFA_ADHAMIYA_RIVER':
-      case 'RUSAFA_ZAAFARANIYA_DIYALA': {
+      case 'KARBALA':
+      case 'NAJAF': {
+        this.playTigrisPigeonsCooing(t);
+        break;
+      }
+
+      case 'DUHOK':
+      case 'ERBIL':
+      case 'SULAYMANIYAH':
+      case 'NINEVEH': {
         const rand = Math.random();
-        if (rand < 0.55) {
-          this.playTigrisPigeonsCooing(t);
-        } else {
+        if (rand < 0.5) {
           this.playRiverBreezeLap(t);
-        }
-        break;
-      }
-
-      // 4. NIGHT AVENUES (Karrada, Palestine St): Neon Hum & Distant City Energy
-      case 'RUSAFA_KARRADA_NIGHT':
-      case 'RUSAFA_PALESTINE_ZAYOUNA': {
-        const rand = Math.random();
-        if (rand < 0.6) {
-          this.playNeonSignHum(t);
         } else {
-          this.playBaghdadTaxiHorn(t);
+          this.playVendorChime(t);
         }
         break;
       }
 
-      // 5. LIVELY BAZAARS (Bayaa, Shuula): Market Vendor Chime & Street Energy
-      case 'KARKH_SAYDIYA_BAYAA':
-      case 'KARKH_GHAZALIYA_SHUULA':
       default: {
         const rand = Math.random();
         if (rand < 0.5) {
-          this.playVendorChime(t);
-        } else {
           this.playBaghdadiTeaGlassClink(t);
+        } else {
+          this.playTigrisPigeonsCooing(t);
         }
         break;
       }
@@ -530,36 +511,7 @@ export class AudioManager {
     });
   }
 
-  /**
-   * Distant Car Passing / Engine Rev in Baghdad Avenues
-   */
-  private playDistantEngineRev(t: number) {
-    if (!this.ctx || !this.ambientGain) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
-
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(160, t);
-    filter.frequency.linearRampToValueAtTime(340, t + 0.4);
-    filter.frequency.linearRampToValueAtTime(120, t + 0.9);
-
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(65, t);
-    osc.frequency.linearRampToValueAtTime(115, t + 0.4);
-    osc.frequency.linearRampToValueAtTime(55, t + 0.9);
-
-    gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(0.12, t + 0.4);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.95);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.ambientGain);
-
-    osc.start(t);
-    osc.stop(t + 1.0);
-  }
+  // Distant engine sounds removed in favor of serene ambient atmosphere
 
   /**
    * Traditional Iraqi Tea Spoon Clinking against Glass Istikan (رنة استكان الشاي العراقي المهيل في المتنبي والقشلة)

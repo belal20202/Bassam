@@ -29,28 +29,25 @@ export type WeatherType =
   | 'KARRADA_NIGHT';     // ليل الكرادة وأنوار النيون
 
 export type BiomeType = 
-  // دول عربية (Arab Countries)
-  | 'EGYPT_CAIRO'              // 🇪🇬 مصر - القاهرة
-  | 'UAE_DUBAI'                // 🇦🇪 الإمارات - دبي
-  | 'SAUDI_RIYADH'             // 🇸🇦 السعودية - الرياض
-  | 'MOROCCO_MARRAKESH'        // 🇲🇦 المغرب - مراكش
-  | 'QATAR_DOHA'               // 🇶🇦 قطر - الدوحة
-  | 'JORDAN_AMMAN'             // 🇯🇴 الأردن - عمّان
-  | 'LEBANON_BEIRUT'           // 🇱🇧 لبنان - بيروت
-  | 'IRAQ_BAGHDAD'             // 🇮🇶 العراق - بغداد
-  | 'KUWAIT_CITY'              // 🇰🇼 الكويت
-  | 'OMAN_MUSCAT'              // 🇴🇲 سلطنة عمان - مسقط
-  | 'ALGERIA_ALGIERS'          // 🇩🇿 الجزائر
-  | 'TUNISIA_TUNIS'            // 🇹🇳 تونس
-  // دول وعواصم عالمية (International Capitals)
-  | 'JAPAN_TOKYO'              // 🇯🇵 اليابان - طوكيو
-  | 'FRANCE_PARIS'             // 🇫🇷 فرنسا - باريس
-  | 'UK_LONDON'                // 🇬🇧 بريطانيا - لندن
-  | 'USA_NEWYORK'              // 🇺🇸 أمريكا - نيويورك
-  | 'BRAZIL_RIO'               // 🇧🇷 البرازيل - ريو دي جانيرو
-  | 'SPAIN_MADRID'             // 🇪🇸 إسبانيا - مدريد
-  | 'ITALY_ROME'               // 🇮🇹 إيطاليا - روما
-  | 'GERMANY_BERLIN';          // 🇩🇪 ألمانيا - برلين
+  // المحافظات العراقية الـ 18 الرسمية (18 Iraqi Governorates)
+  | 'BAGHDAD'          // بغداد - دار السلام والعاصمة
+  | 'BASRA'            // البصرة - ثغر العراق الباسم والفيحاء
+  | 'NINEVEH'          // نينوى - الموصل الحدباء وأم الربيعين
+  | 'ERBIL'            // أربيل - هولير وقلعة التاريخ
+  | 'SULAYMANIYAH'     // السليمانية - عروس كردستان والثقافة
+  | 'DUHOK'            // دهوك - جبال وسحر الشمال
+  | 'KIRKUK'           // كركوك - مدينة التآخي والنفط
+  | 'BABYLON'          // بابل - الحلة ومهد الحضارات
+  | 'KARBALA'          // كربلاء - قباب المجد وقدسية التاريخ
+  | 'NAJAF'            // النجف - وادي السلام وأصالة العلم
+  | 'ANBAR'            // الأنبار - الرمادي وأصالة الفرات
+  | 'DIYALA'           // ديالى - بعقوبة وبساتين البرتقال
+  | 'SALADIN'          // صلاح الدين - تكريت ومئذنة سامراء الملوية
+  | 'WASIT'            // واسط - الكوت وسد دجلة الخالد
+  | 'MAYSAN'           // ميسان - العمارة وسحر الأهوار العريقة
+  | 'DHI_QAR'          // ذي قار - الناصرية وحضارة أور السومرية
+  | 'MUTHANNA'         // المثنى - السماوة وعبق الصحراء وبحيرة ساوة
+  | 'QADISIYYAH';      // القادسية - الديوانية ونخيل الفرات الأوسط
 
 export type PowerUpType = 
   | 'MAGNET'         // مغناطيس العملات
@@ -156,6 +153,7 @@ export interface GameSettings {
   cameraShake: boolean;
   hapticFeedback: boolean;
   sensitivity: number;     // 1 - 5
+  invertControls?: boolean; // عودة حركة اللاعب يمين/يسار
 }
 
 export interface PlayerTitle {
