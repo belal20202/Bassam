@@ -12,9 +12,9 @@ import { generateDailyChallenges, processDailyChallengesProgression, verifyAndRe
 const STORAGE_KEY = 'HAMOUDI_RUNNER_V1_SAVE';
 
 export const DEFAULT_PLAYER_DATA: PlayerData = {
-  iqd: 500, // مكافأة البداية الترحيبية لحمودي 500 دينار
+  iqd: 500, // مكافأة البداية الترحيبية لبسام 500 دينار
   xp: 0,
-  level: 1,
+  level: 0,
   highScoreDistance: 0,
   highScoreCoins: 0,
   totalRuns: 0,
@@ -44,12 +44,13 @@ export const DEFAULT_PLAYER_DATA: PlayerData = {
     DHI_QAR: 0,
     MUTHANNA: 0,
     QADISIYYAH: 0,
+    DIWANIYAH: 0,
   },
   careerHistory: [],
   
   // Titles System
-  activeTitleId: 'title_novice_runner',
-  unlockedTitles: ['title_novice_runner'],
+  activeTitleId: 'title_starter',
+  unlockedTitles: ['title_starter'],
   
   // Daily Challenges System
   dailyChallenges: generateDailyChallenges(),
@@ -65,13 +66,13 @@ export const DEFAULT_PLAYER_DATA: PlayerData = {
     slide: 1,
   },
   unlockedItems: [
-    'outfit_baghdadi_dishdasha',
+    'outfit_classic_sport',
     'shoes_classic_runner',
     'trail_dust_clean',
     'acc_none',
   ],
   customization: {
-    equippedOutfit: 'outfit_baghdadi_dishdasha',
+    equippedOutfit: 'outfit_classic_sport',
     equippedShoes: 'shoes_classic_runner',
     equippedTrail: 'trail_dust_clean',
     equippedAccessory: 'acc_none',
@@ -92,10 +93,29 @@ export const DEFAULT_PLAYER_DATA: PlayerData = {
 };
 
 /**
- * Calculate XP required for a given level.
+ * Calculate XP required for a given level (calibrated for levels 0 to 100).
  */
 export function getRequiredXPForLevel(level: number): number {
-  return Math.round(300 * Math.pow(1.25, Math.max(0, level - 1)));
+  const safeLevel = Math.max(0, Math.min(100, level));
+  return 100 + safeLevel * 20;
+}
+
+/**
+ * Get detailed level and XP progression data for levels 0 to 100
+ */
+export function getLevelProgress(level: number, xp: number): {
+  currentLevel: number;
+  currentXP: number;
+  requiredXP: number;
+  remainingXP: number;
+  percent: number;
+} {
+  const currentLevel = Math.max(0, Math.min(100, level));
+  const requiredXP = getRequiredXPForLevel(currentLevel);
+  const currentXP = currentLevel >= 100 ? requiredXP : Math.max(0, Math.min(requiredXP, xp));
+  const remainingXP = currentLevel >= 100 ? 0 : Math.max(0, requiredXP - currentXP);
+  const percent = currentLevel >= 100 ? 100 : Math.min(100, Math.max(0, Math.round((currentXP / requiredXP) * 100)));
+  return { currentLevel, currentXP, requiredXP, remainingXP, percent };
 }
 
 /**
@@ -188,6 +208,17 @@ export function loadPlayerData(): PlayerData {
     // Check & Refresh 24h Daily Challenges if needed
     const verified = verifyAndRefreshDailyChallenges(initialData);
 
+    // Sanitize legacy outfit & title
+    if (!verified.customization.equippedOutfit || verified.customization.equippedOutfit === 'outfit_baghdadi_dishdasha') {
+      verified.customization.equippedOutfit = 'outfit_classic_sport';
+    }
+    if (!verified.unlockedItems.includes('outfit_classic_sport')) {
+      verified.unlockedItems.push('outfit_classic_sport');
+    }
+    if (verified.activeTitleId === 'title_novice_runner') {
+      verified.activeTitleId = 'title_starter';
+    }
+
     // Evaluate titles unlock status
     verified.unlockedTitles = evaluateUnlockedTitles(verified);
 
@@ -208,10 +239,10 @@ export function savePlayerData(data: PlayerData): void {
 
 export function addXPAndCheckLevelUp(currentXP: number, currentLevel: number, addedXP: number): { newXP: number; newLevel: number; leveledUp: boolean } {
   let totalXP = currentXP + addedXP;
-  let level = currentLevel;
+  let level = Math.max(0, Math.min(100, currentLevel));
   let leveledUp = false;
 
-  while (true) {
+  while (level < 100) {
     const req = getRequiredXPForLevel(level);
     if (totalXP >= req) {
       totalXP -= req;
@@ -220,6 +251,10 @@ export function addXPAndCheckLevelUp(currentXP: number, currentLevel: number, ad
     } else {
       break;
     }
+  }
+
+  if (level >= 100) {
+    totalXP = 0;
   }
 
   return { newXP: totalXP, newLevel: level, leveledUp };
@@ -262,8 +297,8 @@ export function processRunProgression(player: PlayerData, stats: RunStats): {
       updated.biomeVisits[b] = (updated.biomeVisits[b] || 0) + 1;
     });
   } else {
-    // Default to at least Mansour
-    updated.biomeVisits.KARKH_MANSOUR = (updated.biomeVisits.KARKH_MANSOUR || 0) + 1;
+    // Default to at least Baghdad
+    updated.biomeVisits.BAGHDAD = (updated.biomeVisits.BAGHDAD || 0) + 1;
   }
 
   // Record career history entry (keep last 20 runs for clean graph rendering)
@@ -275,7 +310,7 @@ export function processRunProgression(player: PlayerData, stats: RunStats): {
     jumps: stats.jumpsPerformed,
     slides: stats.slidesPerformed,
     dodged: stats.obstaclesDodged,
-    primaryBiome: stats.visitedBiomes?.[0] || 'KARKH_MANSOUR',
+    primaryBiome: (stats.visitedBiomes?.[0] as BiomeType) || 'BAGHDAD',
   };
   updated.careerHistory.unshift(historyEntry);
   if (updated.careerHistory.length > 20) {

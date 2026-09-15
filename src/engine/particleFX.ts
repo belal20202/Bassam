@@ -227,28 +227,28 @@ export class ParticleFXManager {
       if (this.particles.length >= this.maxParticles) break;
 
       const color = isWet
-        ? new THREE.Color(0xcadcfa)
-        : new THREE.Color(0xc2a679);
+        ? new THREE.Color(0x94a3b8)
+        : new THREE.Color(0xa89078);
 
       this.particles.push({
         position: new THREE.Vector3(
-          pos.x + footOffset + (Math.random() - 0.5) * 0.15,
-          0.04,
-          pos.z - 0.1
+          pos.x + footOffset + (Math.random() - 0.5) * 0.1,
+          0.02,
+          pos.z - 0.45
         ),
         velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 1.5,
-          0.3 + Math.random() * 0.5,
-          -1.5 - Math.random() * 1.5
+          (Math.random() - 0.5) * 0.8,
+          0.2 + Math.random() * 0.3,
+          -1.8 - Math.random() * 1.5
         ),
         color,
-        size: 0.2 + Math.random() * 0.2,
-        maxSize: 0.65,
-        opacity: 0.5,
-        maxLife: 0.35,
+        size: 0.15 + Math.random() * 0.15,
+        maxSize: 0.45,
+        opacity: 0.25,
+        maxLife: 0.25,
         life: 0,
         rotation: Math.random() * Math.PI,
-        rotSpeed: (Math.random() - 0.5) * 3,
+        rotSpeed: (Math.random() - 0.5) * 2,
         type: isWet ? 'WATER_SPRAY' : 'DUST',
       });
     }
@@ -383,6 +383,46 @@ export class ParticleFXManager {
       rotSpeed: 0,
       type: 'SPEED_TRAIL',
     });
+  }
+
+  /**
+   * 5b. City Runner Aerodynamic Slipstream & Speed Ribbons (آثار سرعة عداء المدينة وخطوط الهواء التوربينية)
+   */
+  public emitCityRunnerSlipstream(pos: THREE.Vector3, speed: number) {
+    if (this.particles.length >= this.maxParticles - 10) return;
+
+    const count = speed > 22 ? 3 : 1;
+    for (let i = 0; i < count; i++) {
+      // Wind streamline trailing behind shoulders, elbows and sneakers
+      const lateralSpread = (Math.random() - 0.5) * 0.7;
+      const heightOffset = 0.2 + Math.random() * 1.3;
+
+      const ribbonColor = Math.random() > 0.35
+        ? new THREE.Color(0x38bdf8) // Baghdad Cyan Streamline
+        : new THREE.Color(0xf59e0b); // Golden Kinetic Streak
+
+      this.particles.push({
+        position: new THREE.Vector3(
+          pos.x + lateralSpread,
+          pos.y + heightOffset,
+          pos.z - 0.25 - Math.random() * 0.3
+        ),
+        velocity: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.4,
+          (Math.random() - 0.5) * 0.3,
+          -speed * 0.65 - Math.random() * 4.0
+        ),
+        color: ribbonColor,
+        size: 0.20 + Math.random() * 0.18,
+        maxSize: 0.65,
+        opacity: 0.75,
+        maxLife: 0.28,
+        life: 0,
+        rotation: 0,
+        rotSpeed: 0,
+        type: 'SPEED_TRAIL',
+      });
+    }
   }
 
   /**

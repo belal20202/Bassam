@@ -25,34 +25,36 @@ interface InGameHUDProps {
 }
 
 const BIOME_NAMES: Record<BiomeType, string> = {
-  BAGHDAD: 'محافظة بغداد 🇮🇶',
-  BASRA: 'محافظة البصرة 🇮🇶',
-  NINEVEH: 'محافظة نينوى 🇮🇶',
-  ERBIL: 'محافظة أربيل 🇮🇶',
-  SULAYMANIYAH: 'محافظة السليمانية 🇮🇶',
-  DUHOK: 'محافظة دهوك 🇮🇶',
-  KIRKUK: 'محافظة كركوك 🇮🇶',
-  BABYLON: 'محافظة بابل 🇮🇶',
-  KARBALA: 'محافظة كربلاء 🇮🇶',
-  NAJAF: 'محافظة النجف 🇮🇶',
-  ANBAR: 'محافظة الأنبار 🇮🇶',
-  DIYALA: 'محافظة ديالى 🇮🇶',
-  SALADIN: 'محافظة صلاح الدين 🇮🇶',
-  WASIT: 'محافظة واسط 🇮🇶',
-  MAYSAN: 'محافظة ميسان 🇮🇶',
-  DHI_QAR: 'محافظة ذي قار 🇮🇶',
-  MUTHANNA: 'محافظة المثنى 🇮🇶',
-  QADISIYYAH: 'محافظة القادسية 🇮🇶',
+  BAGHDAD: 'بغداد',
+  BASRA: 'البصرة',
+  NINEVEH: 'نينوى',
+  ERBIL: 'أربيل',
+  SULAYMANIYAH: 'السليمانية',
+  DUHOK: 'دهوك',
+  KIRKUK: 'كركوك',
+  BABYLON: 'بابل',
+  KARBALA: 'كربلاء',
+  NAJAF: 'النجف',
+  ANBAR: 'الأنبار',
+  DIYALA: 'ديالى',
+  SALADIN: 'صلاح الدين',
+  WASIT: 'واسط',
+  MAYSAN: 'ميسان',
+  DHI_QAR: 'ذي قار',
+  MUTHANNA: 'المثنى',
+  QADISIYYAH: 'الديوانية',
+  DIWANIYAH: 'الديوانية',
 };
 
-const WEATHER_INFO: Record<WeatherType, { name: string; alertText: string; icon: string; color: string; border: string }> = {
-  SUNNY_MORNING: { name: 'صباح بغدادي مشمس', alertText: 'أجواء مشمسة صافية ورؤية مثالية', icon: '☀️', color: 'text-amber-300', border: 'border-amber-500/40' },
-  NOON_BRIGHT: { name: 'شمس الظهيرة الساطعة', alertText: 'حرارة معتدلة وطريق مفتوح', icon: '☀️', color: 'text-yellow-300', border: 'border-yellow-500/40' },
-  GOLDEN_SUNSET: { name: 'غروب دجلة والفرات الذهبي', alertText: 'إضاءة ذهبية ساحرة على الجسور', icon: '🌅', color: 'text-orange-400', border: 'border-orange-500/40' },
-  LIGHT_RAIN_MIST: { name: 'رذاذ دجلة وضباب منعش', alertText: 'رذاذ منعش يبلل الأسفلت', icon: '🌧️', color: 'text-blue-300', border: 'border-blue-500/40' },
-  BAGHDAD_STORM: { name: 'أمطار ورعد ولمعان البرق', alertText: 'أمطار قوية ولمعان برق خفيف', icon: '⛈️', color: 'text-indigo-300', border: 'border-indigo-500/40' },
-  BAGHDAD_DUST_STORM: { name: 'موجة غبار وعاصفة ترابية', alertText: 'تنبيه: موجة تراب نشطة، انتبه للعوائق!', icon: '🌪️', color: 'text-amber-400', border: 'border-amber-500/60' },
-  KARRADA_NIGHT: { name: 'ليل الكرادة وأنوار النيون', alertText: 'ليالٍ بغدادية متوهجة بأنوار النيون', icon: '🌙', color: 'text-purple-300', border: 'border-purple-500/40' },
+const WEATHER_SYMBOLS: Record<WeatherType, string> = {
+  SUNNY_MORNING: '☀️',
+  NOON_BRIGHT: '☀️',
+  GOLDEN_SUNSET: '🌅',
+  LIGHT_RAIN_MIST: '🌧️',
+  BAGHDAD_STORM: '⛈️',
+  BAGHDAD_DUST_STORM: '🌪️',
+  SNOW_FLURRY: '❄️',
+  KARRADA_NIGHT: '🌙✨',
 };
 
 export const InGameHUD: React.FC<InGameHUDProps> = ({
@@ -67,20 +69,37 @@ export const InGameHUD: React.FC<InGameHUDProps> = ({
   onPause,
 }) => {
   const [showSideWeather, setShowSideWeather] = useState<boolean>(true);
-  const prevWeatherRef = useRef<WeatherType>(weather);
   const weatherTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Governorate auto-hide state: strictly 5 seconds then disappears
+  const [showGovernorate, setShowGovernorate] = useState<boolean>(true);
+  const biomeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
-    if (prevWeatherRef.current !== weather) {
-      prevWeatherRef.current = weather;
-      setShowSideWeather(true);
+    setShowSideWeather(true);
+    if (weatherTimerRef.current) clearTimeout(weatherTimerRef.current);
+    // Auto-hide weather icon after exactly 3 seconds as requested (no text, symbol only)
+    weatherTimerRef.current = setTimeout(() => {
+      setShowSideWeather(false);
+    }, 3000);
+
+    return () => {
       if (weatherTimerRef.current) clearTimeout(weatherTimerRef.current);
-      // Auto-hide side weather notification after exactly 3 seconds as requested
-      weatherTimerRef.current = setTimeout(() => {
-        setShowSideWeather(false);
-      }, 3000);
-    }
+    };
   }, [weather]);
+
+  useEffect(() => {
+    setShowGovernorate(true);
+    if (biomeTimerRef.current) clearTimeout(biomeTimerRef.current);
+    // Auto-hide governorate name after exactly 5 seconds as requested
+    biomeTimerRef.current = setTimeout(() => {
+      setShowGovernorate(false);
+    }, 5000);
+
+    return () => {
+      if (biomeTimerRef.current) clearTimeout(biomeTimerRef.current);
+    };
+  }, [biome]);
 
   const handlePauseClick = () => {
     audioManager.playButtonClick();
@@ -120,34 +139,44 @@ export const InGameHUD: React.FC<InGameHUDProps> = ({
     }
   };
 
-  const weatherData = WEATHER_INFO[weather] || WEATHER_INFO.SUNNY_MORNING;
-
   return (
     <div className="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-2.5 sm:p-3 select-none">
-      {/* Top Single Horizontal Navigation and Stats Bar - Kept clean and unobstructed */}
+      {/* Top Single Horizontal Navigation and Stats Bar - Stable Fixed Dimensions */}
       <div className="w-full flex items-center justify-between gap-2 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-xl shadow-lg">
-        {/* Right Section: Distance & Currency Balance */}
+        {/* Right Section: Distance & Currency Balance with Strictly Fixed Dimensions */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Distance */}
-          <div className="flex items-center gap-1 bg-slate-800/90 px-2 py-0.5 rounded-lg border border-slate-700/60">
-            <span className="text-xs text-amber-400">🏃</span>
-            <span className="text-xs font-bold text-white font-mono">{Math.round(distance)}</span>
-            <span className="text-[10px] text-slate-300 font-semibold">م</span>
+          {/* Distance: strictly fixed width and tabular numbers so it never grows or shifts */}
+          <div className="flex items-center justify-between gap-1.5 bg-slate-800/95 px-2.5 py-1 rounded-lg border border-slate-700/70 w-[108px] h-8 shadow-inner overflow-hidden shrink-0">
+            <span className="text-xs text-amber-400 shrink-0">🏃</span>
+            <span className="text-xs font-bold text-white font-mono tabular-nums text-center flex-1 truncate">
+              {Math.round(distance)}
+            </span>
+            <span className="text-[10px] text-slate-400 font-bold shrink-0">م</span>
           </div>
 
-          {/* Dinars Currency */}
-          <div className="flex items-center gap-1 bg-slate-800/90 px-2 py-0.5 rounded-lg border border-slate-700/60">
-            <span className="text-xs">💰</span>
-            <span className="text-xs font-bold text-yellow-300 font-mono">{coins.toLocaleString('en-US')}</span>
-            <span className="text-[10px] text-yellow-400 font-semibold">د.ع</span>
+          {/* Dinars Currency: Perfectly calibrated dimensions and legible tabular numerals */}
+          <div className="flex items-center justify-between gap-1.5 bg-slate-800/95 px-2.5 py-1 rounded-lg border border-yellow-500/30 w-[114px] h-8 shadow-inner overflow-hidden shrink-0">
+            <span className="text-xs shrink-0">💰</span>
+            <span className="text-xs font-black text-yellow-300 font-mono tabular-nums text-center flex-1 truncate">
+              {coins.toLocaleString('en-US')}
+            </span>
+            <span className="text-[10px] text-yellow-400 font-black shrink-0">د.ع</span>
           </div>
         </div>
 
-        {/* Center Section: Current Iraqi Governorate */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1 bg-amber-500/20 border border-amber-400/40 px-3 py-1 rounded-lg text-xs font-bold text-amber-300 whitespace-nowrap shadow-sm">
-            <span>📍</span>
-            <span>{BIOME_NAMES[biome] || 'محافظة بغداد 🇮🇶'}</span>
+        {/* Center Section: Level & XP Display */}
+        <div className="flex items-center justify-center gap-2 flex-1 min-w-0 h-8 px-1">
+          <div className="flex items-center gap-1.5 bg-slate-800/95 px-2 py-1 rounded-lg border border-indigo-500/40 shadow-inner h-8 shrink-0">
+            <span className="text-[11px] font-black text-indigo-300 shrink-0">مستوى {playerData.level}</span>
+            <div className="w-14 sm:w-20 h-2 bg-slate-700/80 rounded-full overflow-hidden relative shrink-0">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all duration-300 rounded-full"
+                style={{ width: `${Math.min(100, Math.max(0, (playerData.xp / Math.max(1, playerData.xpToNextLevel)) * 100))}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-cyan-300 font-mono font-bold shrink-0">
+              {playerData.xp}/{playerData.xpToNextLevel} XP
+            </span>
           </div>
         </div>
 
@@ -204,33 +233,25 @@ export const InGameHUD: React.FC<InGameHUDProps> = ({
         </div>
       )}
 
-      {/* Right Side: Weather Notification Alert (Auto-disappears after 3 seconds) */}
-      <div className="absolute top-16 right-3 pointer-events-auto flex flex-col items-end gap-1 max-w-[220px]">
-        {showSideWeather ? (
-          <div className={`flex items-start gap-2 bg-slate-950/95 border ${weatherData.border} shadow-2xl backdrop-blur-md p-2.5 rounded-xl transition-all duration-300 animate-in fade-in slide-in-from-right-3`}>
-            <span className="text-xl shrink-0 mt-0.5">{weatherData.icon}</span>
-            <div className="flex flex-col text-right">
-              <div className="flex items-center justify-between gap-2">
-                <span className={`text-[11px] font-black ${weatherData.color}`}>
-                  {weatherData.name}
-                </span>
-                <span className="text-[9px] font-mono text-slate-400 bg-slate-800 px-1 rounded">3ث</span>
-              </div>
-              <p className="text-[10px] text-slate-300 mt-0.5 leading-snug">
-                {weatherData.alertText}
-              </p>
-            </div>
+      {/* Right Side: Weather Indicator - Symbol ONLY, auto-disappears after 3s without text or seconds countdown */}
+      {showSideWeather && (
+        <div className="absolute top-16 right-3 pointer-events-none flex items-center justify-center animate-in fade-in zoom-in-75 duration-300">
+          <div className="w-12 h-12 rounded-2xl bg-slate-950/90 border border-amber-400/40 shadow-[0_0_20px_rgba(251,191,36,0.35)] backdrop-blur-md flex items-center justify-center text-2xl select-none">
+            {WEATHER_SYMBOLS[weather] || '☀️'}
           </div>
-        ) : (
-          <button
-            onClick={() => setShowSideWeather(true)}
-            className="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/70 shadow-md backdrop-blur-sm text-sm transition-transform active:scale-95"
-            title="عرض حالة الطقس"
-          >
-            <span>{weatherData.icon}</span>
-          </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Bottom Floating Governorate Toast Notification (Appears for 5s then disappears gracefully) */}
+      {showGovernorate && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-none z-30 flex items-center gap-2.5 bg-slate-950/95 border-2 border-amber-400/80 px-5 py-2.5 rounded-2xl shadow-[0_0_25px_rgba(251,191,36,0.35)] backdrop-blur-md animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <span className="text-xl">📍</span>
+          <div className="flex flex-col text-right">
+            <span className="text-[10px] text-amber-400 font-bold leading-tight">المحافظة الحالية</span>
+            <span className="text-sm font-black text-white tracking-wide">{BIOME_NAMES[biome] || 'بغداد'}</span>
+          </div>
+        </div>
+      )}
 
       {/* Empty bottom spacer */}
       <div className="h-1" />

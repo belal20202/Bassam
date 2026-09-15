@@ -111,11 +111,11 @@ export class ObstacleManager {
     switch (type) {
       case 'TAXI': {
         width = 1.9;
-        height = 1.35;
-        depth = 3.4;
-        canJump = false;
-        isMoving = false;
-        moveSpeed = 0;
+        height = 1.25;
+        depth = 3.2;
+        canJump = true; // Allow jumping and skipping over cars
+        isMoving = z > 300 && Math.random() < 0.55;
+        moveSpeed = isMoving ? 7.5 : 0;
 
         // Yellow Car Body
         const bodyGeo = new THREE.BoxGeometry(1.8, 0.75, 3.4);
@@ -272,12 +272,12 @@ export class ObstacleManager {
 
       case 'TUKTUK': {
         width = 1.6;
-        height = 1.65;
-        depth = 2.8;
-        canJump = false;
+        height = 1.35;
+        depth = 2.6;
+        canJump = true;
         canSlide = false;
-        isMoving = false;
-        moveSpeed = 0;
+        isMoving = z > 200 && Math.random() < 0.65;
+        moveSpeed = isMoving ? 9.0 : 0;
 
         // Tuk-Tuk Chassis & Cabin
         const chassisMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35, metalness: 0.3 }); // Baghdad Red/Yellow Tuk-Tuk
@@ -757,14 +757,18 @@ export class ObstacleManager {
       }
     }
 
-    // 3. Cleanup Obstacles behind player
+    // 3. Update moving obstacles (oncoming traffic) & cleanup behind player
     for (let i = this.obstacles.length - 1; i >= 0; i--) {
-       const obs = this.obstacles[i];
-       if (obs.mesh.position.z < playerZ - 20) {
-         this.scene.remove(obs.mesh);
-         this.obstacles.splice(i, 1);
-       }
-     }
+      const obs = this.obstacles[i];
+      if (obs.isMoving && !obs.isCollided) {
+        obs.z -= obs.moveSpeed * delta;
+        obs.mesh.position.z = obs.z;
+      }
+      if (obs.mesh.position.z < playerZ - 20) {
+        this.scene.remove(obs.mesh);
+        this.obstacles.splice(i, 1);
+      }
+    }
   }
 
   public clearAll() {

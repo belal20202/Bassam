@@ -68,6 +68,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     }
   }, [playerData]);
 
+  // Keep engine callbacks synchronized
+  useEffect(() => {
+    if (engineRef.current) {
+      engineRef.current.setCallbacks({
+        onHUDUpdate,
+        onGameOver,
+      });
+    }
+  }, [onHUDUpdate, onGameOver]);
+
   // Pointer event handlers with instantaneous gesture detection
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (gameState !== 'PLAYING') return;

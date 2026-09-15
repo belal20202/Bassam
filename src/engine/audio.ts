@@ -44,9 +44,9 @@ export class AudioManager {
     BAGHDAD: {
       name: 'بغداد - دار السلام',
       maqamName: 'مقام الراست البغدادي الهادئ الأصيل',
-      tempoBPM: 98,
+      tempoBPM: 84,
       melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25],
-      bassScale: [65.41, 73.42, 87.31, 98.00, 110.00],
+      bassScale: [130.81, 146.83, 164.81, 196.00],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'OUD',
       melodyDensity: 1,
@@ -54,9 +54,9 @@ export class AudioManager {
     BASRA: {
       name: 'البصرة - الفيحاء وشط العرب',
       maqamName: 'مقام النهاوند الهادئ العذب',
-      tempoBPM: 96,
+      tempoBPM: 82,
       melodyScale: [261.63, 293.66, 311.13, 349.23, 392.00, 415.30, 493.88, 523.25],
-      bassScale: [65.41, 73.42, 77.78, 87.31, 98.00],
+      bassScale: [130.81, 146.83, 155.56, 174.61],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'QANUN',
       melodyDensity: 1,
@@ -64,9 +64,9 @@ export class AudioManager {
     NINEVEH: {
       name: 'نينوى - أم الربيعين والحدباء',
       maqamName: 'مقام البيات الموصلي الهادئ',
-      tempoBPM: 94,
+      tempoBPM: 80,
       melodyScale: [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25],
-      bassScale: [73.42, 82.41, 98.00, 110.00, 123.47],
+      bassScale: [146.83, 164.81, 174.61, 196.00],
       rhythmStyle: 'HERITAGE',
       leadInstrument: 'NAY',
       melodyDensity: 1,
@@ -74,9 +74,9 @@ export class AudioManager {
     ERBIL: {
       name: 'أربيل - قلعة التاريخ',
       maqamName: 'مقام الكرد الجبلي الهادئ',
-      tempoBPM: 98,
+      tempoBPM: 82,
       melodyScale: [293.66, 311.13, 349.23, 392.00, 440.00, 466.16, 523.25],
-      bassScale: [73.42, 77.78, 87.31, 98.00, 110.00],
+      bassScale: [146.83, 155.56, 174.61, 196.00],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'OUD',
       melodyDensity: 1,
@@ -84,9 +84,9 @@ export class AudioManager {
     SULAYMANIYAH: {
       name: 'السليمانية - عروس الثقافة',
       maqamName: 'أنغام شجية هادئة مع نسيم الجبال',
-      tempoBPM: 92,
+      tempoBPM: 80,
       melodyScale: [261.63, 293.66, 311.13, 349.23, 392.00, 440.00, 523.25],
-      bassScale: [65.41, 73.42, 87.31, 98.00],
+      bassScale: [130.81, 146.83, 174.61, 196.00],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'NAY',
       melodyDensity: 1,
@@ -94,9 +94,9 @@ export class AudioManager {
     DUHOK: {
       name: 'دهوك - شلالات وزلال الطبيعة',
       maqamName: 'مقام النهاوند الجبلي العذب',
-      tempoBPM: 94,
+      tempoBPM: 80,
       melodyScale: [261.63, 293.66, 311.13, 349.23, 392.00, 440.00, 523.25],
-      bassScale: [65.41, 73.42, 87.31, 98.00],
+      bassScale: [130.81, 146.83, 174.61, 196.00],
       rhythmStyle: 'HERITAGE',
       leadInstrument: 'NAY',
       melodyDensity: 1,
@@ -104,9 +104,9 @@ export class AudioManager {
     KIRKUK: {
       name: 'كركوك - مدينة القلعة والتآخي',
       maqamName: 'مقام البنجكاه العريق المتأني',
-      tempoBPM: 96,
+      tempoBPM: 82,
       melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 466.16],
-      bassScale: [65.41, 73.42, 82.41, 87.31, 98.00],
+      bassScale: [130.81, 146.83, 164.81, 174.61],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'QANUN',
       melodyDensity: 1,
@@ -114,9 +114,9 @@ export class AudioManager {
     BABYLON: {
       name: 'بابل - الحلة وأسد بابل',
       maqamName: 'مقام الراست البابلي التأملي',
-      tempoBPM: 96,
+      tempoBPM: 82,
       melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88],
-      bassScale: [65.41, 73.42, 87.31, 98.00, 110.00],
+      bassScale: [130.81, 146.83, 164.81, 196.00],
       rhythmStyle: 'HERITAGE',
       leadInstrument: 'OUD',
       melodyDensity: 1,
@@ -124,9 +124,9 @@ export class AudioManager {
     KARBALA: {
       name: 'كربلاء المقدسة',
       maqamName: 'مقام الحجاز الروحاني الهادئ الخاشع',
-      tempoBPM: 90,
+      tempoBPM: 78,
       melodyScale: [293.66, 311.13, 369.99, 392.00, 440.00, 466.16, 523.25],
-      bassScale: [73.42, 77.78, 92.50, 98.00, 110.00],
+      bassScale: [146.83, 155.56, 184.99, 196.00],
       rhythmStyle: 'HERITAGE',
       leadInstrument: 'NAY',
       melodyDensity: 1,
@@ -134,9 +134,9 @@ export class AudioManager {
     NAJAF: {
       name: 'النجف الأشرف - وادي السلام',
       maqamName: 'مقام الصبا الروحاني الهادئ',
-      tempoBPM: 90,
+      tempoBPM: 78,
       melodyScale: [293.66, 311.13, 349.23, 369.99, 440.00, 466.16, 523.25],
-      bassScale: [73.42, 77.78, 87.31, 92.50, 110.00],
+      bassScale: [146.83, 155.56, 174.61, 184.99],
       rhythmStyle: 'HERITAGE',
       leadInstrument: 'NAY',
       melodyDensity: 1,
@@ -144,9 +144,9 @@ export class AudioManager {
     ANBAR: {
       name: 'الأنبار - الرمادي والفرات الأصيل',
       maqamName: 'مقام البياتي الفراتي الهادئ',
-      tempoBPM: 96,
+      tempoBPM: 82,
       melodyScale: [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25],
-      bassScale: [73.42, 82.41, 98.00, 110.00],
+      bassScale: [146.83, 164.81, 174.61, 196.00],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'OUD',
       melodyDensity: 1,
@@ -154,9 +154,9 @@ export class AudioManager {
     DIYALA: {
       name: 'ديالى - بعقوبة وبساتين البرتقال',
       maqamName: 'مقام السيكاه العذب المريح',
-      tempoBPM: 96,
+      tempoBPM: 82,
       melodyScale: [277.18, 311.13, 349.23, 392.00, 415.30, 466.16, 554.37],
-      bassScale: [69.30, 77.78, 87.31, 98.00],
+      bassScale: [138.59, 155.56, 174.61, 196.00],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'QANUN',
       melodyDensity: 1,
@@ -164,9 +164,9 @@ export class AudioManager {
     SALADIN: {
       name: 'صلاح الدين - ملوية سامراء وتكريت',
       maqamName: 'مقام العجم المتأني الشامخ',
-      tempoBPM: 98,
+      tempoBPM: 84,
       melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88],
-      bassScale: [65.41, 73.42, 87.31, 98.00],
+      bassScale: [130.81, 146.83, 164.81, 196.00],
       rhythmStyle: 'HERITAGE',
       leadInstrument: 'NAY',
       melodyDensity: 1,
@@ -174,9 +174,9 @@ export class AudioManager {
     WASIT: {
       name: 'واسط - الكوت وسد دجلة',
       maqamName: 'مقام النهاوند الرقيق على ضفاف دجلة',
-      tempoBPM: 94,
+      tempoBPM: 82,
       melodyScale: [261.63, 293.66, 311.13, 349.23, 392.00, 415.30, 493.88],
-      bassScale: [65.41, 73.42, 77.78, 87.31],
+      bassScale: [130.81, 146.83, 155.56, 174.61],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'OUD',
       melodyDensity: 1,
@@ -184,9 +184,9 @@ export class AudioManager {
     MAYSAN: {
       name: 'ميسان - العمارة وعروس الأهوار',
       maqamName: 'مقام الحكيمي الريفي الهادئ للأهوار',
-      tempoBPM: 92,
+      tempoBPM: 80,
       melodyScale: [261.63, 293.66, 329.63, 369.99, 392.00, 440.00, 493.88],
-      bassScale: [65.41, 73.42, 82.41, 92.50],
+      bassScale: [130.81, 146.83, 164.81, 184.99],
       rhythmStyle: 'HERITAGE',
       leadInstrument: 'NAY',
       melodyDensity: 1,
@@ -194,9 +194,9 @@ export class AudioManager {
     DHI_QAR: {
       name: 'ذي قار - زقورة أور وحضارة سومر',
       maqamName: 'مقام سومري شجي هادئ وقور',
-      tempoBPM: 94,
+      tempoBPM: 82,
       melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 523.25],
-      bassScale: [65.41, 73.42, 87.31, 98.00],
+      bassScale: [130.81, 146.83, 164.81, 196.00],
       rhythmStyle: 'HERITAGE',
       leadInstrument: 'QANUN',
       melodyDensity: 1,
@@ -204,19 +204,29 @@ export class AudioManager {
     MUTHANNA: {
       name: 'المثنى - السماوة وبحيرة ساوة',
       maqamName: 'مقام اللامي الجنوبي الهادئ التأملي',
-      tempoBPM: 94,
+      tempoBPM: 80,
       melodyScale: [293.66, 311.13, 349.23, 392.00, 415.30, 466.16, 523.25],
-      bassScale: [73.42, 77.78, 87.31, 98.00],
+      bassScale: [146.83, 155.56, 174.61, 196.00],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'OUD',
       melodyDensity: 1,
     },
     QADISIYYAH: {
-      name: 'القادسية - الديوانية والفرات الأوسط',
+      name: 'الديوانية - الفرات الأوسط ونخيل الفرات',
       maqamName: 'مقام الراست الفراتي الهادئ العذب',
-      tempoBPM: 96,
+      tempoBPM: 82,
       melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88],
-      bassScale: [65.41, 73.42, 87.31, 98.00],
+      bassScale: [130.81, 146.83, 164.81, 196.00],
+      rhythmStyle: 'SAMAI',
+      leadInstrument: 'NAY',
+      melodyDensity: 1,
+    },
+    DIWANIYAH: {
+      name: 'الديوانية - الفرات الأوسط ونخيل الفرات',
+      maqamName: 'مقام الراست الفراتي الهادئ العذب',
+      tempoBPM: 82,
+      melodyScale: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88],
+      bassScale: [130.81, 146.83, 164.81, 196.00],
       rhythmStyle: 'SAMAI',
       leadInstrument: 'NAY',
       melodyDensity: 1,
@@ -418,7 +428,7 @@ export class AudioManager {
       case 'WASIT':
       case 'DHI_QAR': {
         const rand = Math.random();
-        if (rand < 0.5) {
+        if (rand < 0.55) {
           this.playRiverBreezeLap(t);
         } else {
           this.playTigrisPigeonsCooing(t);
@@ -426,15 +436,31 @@ export class AudioManager {
         break;
       }
 
-      case 'BAGHDAD':
-      case 'BABYLON':
-      case 'DIYALA':
-      case 'SALADIN': {
+      case 'BAGHDAD': {
+        // أصوات زحمة المدينة في الكرخ والرصافة والشوارع الحيوية
         const rand = Math.random();
-        if (rand < 0.55) {
+        if (rand < 0.5) {
+          this.playCityTrafficMurmur(t);
+        } else if (rand < 0.8) {
           this.playBaghdadiTeaGlassClink(t);
         } else {
-          this.playVendorChime(t);
+          this.playTigrisPigeonsCooing(t);
+        }
+        break;
+      }
+
+      case 'ANBAR':
+      case 'MUTHANNA':
+      case 'QADISIYYAH':
+      case 'SALADIN':
+      case 'DIYALA':
+      case 'BABYLON': {
+        // أصوات هبوب الرياح في المناطق المفتوحة والسهول والبادية
+        const rand = Math.random();
+        if (rand < 0.65) {
+          this.playOpenPlainsWindGust(t);
+        } else {
+          this.playBaghdadiTeaGlassClink(t);
         }
         break;
       }
@@ -450,10 +476,10 @@ export class AudioManager {
       case 'SULAYMANIYAH':
       case 'NINEVEH': {
         const rand = Math.random();
-        if (rand < 0.5) {
-          this.playRiverBreezeLap(t);
+        if (rand < 0.55) {
+          this.playOpenPlainsWindGust(t);
         } else {
-          this.playVendorChime(t);
+          this.playRiverBreezeLap(t);
         }
         break;
       }
@@ -461,9 +487,9 @@ export class AudioManager {
       default: {
         const rand = Math.random();
         if (rand < 0.5) {
-          this.playBaghdadiTeaGlassClink(t);
+          this.playOpenPlainsWindGust(t);
         } else {
-          this.playTigrisPigeonsCooing(t);
+          this.playBaghdadiTeaGlassClink(t);
         }
         break;
       }
@@ -473,45 +499,116 @@ export class AudioManager {
   // ==================== AUTHENTIC IRAQI REGIONAL SPOT FX SYNTHESIS ====================
 
   /**
-   * Authentic Baghdad Taxi Double Horn (طوط طوط التاكسي الأصفر في المنصور)
+   * Distant City Traffic & Soft Street Murmur (أصوات زحمة المدينة اللطيفة في الكرخ والرصافة)
    */
-  private playBaghdadTaxiHorn(t: number) {
+  private playCityTrafficMurmur(t: number) {
     if (!this.ctx || !this.ambientGain) return;
-    const baseFreq = 440 + Math.random() * 60; // 440-500Hz dual tone
-    const hornBeeps = [0, 0.12]; // Classic quick double beep
 
-    hornBeeps.forEach((offset) => {
-      const osc1 = this.ctx!.createOscillator();
-      const osc2 = this.ctx!.createOscillator();
-      const gain = this.ctx!.createGain();
-      const filter = this.ctx!.createBiquadFilter();
+    // 1. Soft passing vehicle tire rumble / low road hum
+    const noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 2.2, this.ctx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    let b0 = 0, b1 = 0;
+    for (let i = 0; i < noiseData.length; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99 * b0 + white * 0.05;
+      b1 = 0.95 * b1 + white * 0.02;
+      noiseData[i] = (b0 + b1) * 0.25;
+    }
 
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(baseFreq * 1.2, t + offset);
-      filter.Q.setValueAtTime(3.0, t + offset);
+    const noiseSrc = this.ctx.createBufferSource();
+    noiseSrc.buffer = noiseBuffer;
 
-      osc1.type = 'sawtooth';
-      osc2.type = 'triangle';
-      osc1.frequency.setValueAtTime(baseFreq, t + offset);
-      osc2.frequency.setValueAtTime(baseFreq * 1.25, t + offset); // Major third interval
+    const noiseFilter = this.ctx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.setValueAtTime(140, t);
+    noiseFilter.frequency.linearRampToValueAtTime(260, t + 1.0);
+    noiseFilter.frequency.linearRampToValueAtTime(130, t + 2.0);
 
-      gain.gain.setValueAtTime(0.001, t + offset);
-      gain.gain.linearRampToValueAtTime(0.14, t + offset + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.085);
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.001, t);
+    noiseGain.gain.linearRampToValueAtTime(0.065, t + 0.8);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 2.1);
 
-      osc1.connect(filter);
-      osc2.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.ambientGain!);
+    noiseSrc.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(this.ambientGain);
 
-      osc1.start(t + offset);
-      osc2.start(t + offset);
-      osc1.stop(t + offset + 0.09);
-      osc2.stop(t + offset + 0.09);
-    });
+    noiseSrc.start(t);
+    noiseSrc.stop(t + 2.2);
+
+    // 2. Distant gentle dual-tone car beep echoing softly across streets
+    if (Math.random() < 0.7) {
+      const hornDelay = 0.3 + Math.random() * 0.4;
+      const hornOsc1 = this.ctx.createOscillator();
+      const hornOsc2 = this.ctx.createOscillator();
+      const hornGain = this.ctx.createGain();
+      const hornFilter = this.ctx.createBiquadFilter();
+
+      hornFilter.type = 'lowpass';
+      hornFilter.frequency.setValueAtTime(750, t + hornDelay);
+
+      hornOsc1.type = 'triangle';
+      hornOsc2.type = 'sine';
+      hornOsc1.frequency.setValueAtTime(425, t + hornDelay);
+      hornOsc2.frequency.setValueAtTime(530, t + hornDelay);
+
+      hornGain.gain.setValueAtTime(0.001, t + hornDelay);
+      hornGain.gain.linearRampToValueAtTime(0.045, t + hornDelay + 0.05);
+      hornGain.gain.setValueAtTime(0.040, t + hornDelay + 0.25);
+      hornGain.gain.exponentialRampToValueAtTime(0.0005, t + hornDelay + 0.55);
+
+      hornOsc1.connect(hornFilter);
+      hornOsc2.connect(hornFilter);
+      hornFilter.connect(hornGain);
+      hornGain.connect(this.ambientGain);
+
+      hornOsc1.start(t + hornDelay);
+      hornOsc2.start(t + hornDelay);
+      hornOsc1.stop(t + hornDelay + 0.6);
+      hornOsc2.stop(t + hornDelay + 0.6);
+    }
   }
 
-  // Distant engine sounds removed in favor of serene ambient atmosphere
+  /**
+   * Open Plains & Desert Wind Gust (أصوات الرياح الطبيعية في المناطق المفتوحة والبادية)
+   */
+  private playOpenPlainsWindGust(t: number) {
+    if (!this.ctx || !this.ambientGain) return;
+
+    const windDuration = 2.6;
+    const sampleRate = this.ctx.sampleRate;
+    const buffer = this.ctx.createBuffer(1, sampleRate * windDuration, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    let lastVal = 0;
+    for (let i = 0; i < data.length; i++) {
+      const white = Math.random() * 2 - 1;
+      lastVal = (lastVal + 0.04 * white) / 1.04;
+      data[i] = lastVal * 0.4;
+    }
+
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.setValueAtTime(1.8, t);
+    filter.frequency.setValueAtTime(190, t);
+    filter.frequency.exponentialRampToValueAtTime(540, t + 1.1);
+    filter.frequency.exponentialRampToValueAtTime(170, t + 2.5);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(0.09, t + 1.0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 2.55);
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ambientGain);
+
+    source.start(t);
+    source.stop(t + 2.6);
+  }
 
   /**
    * Traditional Iraqi Tea Spoon Clinking against Glass Istikan (رنة استكان الشاي العراقي المهيل في المتنبي والقشلة)
@@ -710,14 +807,14 @@ export class AudioManager {
   }
 
   private runMusicLoop() {
-    const theme = this.biomeThemes[this.currentBiome] || this.biomeThemes.KARKH_MANSOUR;
+    const theme = this.biomeThemes[this.currentBiome] || this.biomeThemes.BAGHDAD;
     const effectiveBPM = theme.tempoBPM * this.targetSpeedMultiplier;
     const stepTime = (60 / effectiveBPM) / 4; // 16th notes
 
     this.musicInterval = setInterval(() => {
       if (!this.ctx || !this.isMusicPlaying || !this.musicGain) return;
       const t = this.ctx.currentTime;
-      const activeTheme = this.biomeThemes[this.currentBiome] || this.biomeThemes.KARKH_MANSOUR;
+      const activeTheme = this.biomeThemes[this.currentBiome] || this.biomeThemes.BAGHDAD;
 
       // 1. Percussion Layer based on Rhythm Style
       this.playPercussionForStyle(activeTheme.rhythmStyle, this.beatStep, t);
@@ -936,19 +1033,16 @@ export class AudioManager {
   private playBassNote(time: number, freq: number) {
     if (!this.ctx || !this.musicGain) return;
     const osc = this.ctx.createOscillator();
-    const filter = this.ctx.createBiquadFilter();
     const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
+    // Warm gentle acoustic contrabass / Oud acoustic bass
+    osc.type = 'sine';
     osc.frequency.setValueAtTime(freq, time);
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(450, time);
-    gain.gain.setValueAtTime(0.18, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
-    osc.connect(filter);
-    filter.connect(gain);
+    gain.gain.setValueAtTime(0.12, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.32);
+    osc.connect(gain);
     gain.connect(this.musicGain);
     osc.start(time);
-    osc.stop(time + 0.26);
+    osc.stop(time + 0.34);
   }
 
   // ==================== INSTRUMENT SYNTHESIS ====================
@@ -1118,6 +1212,40 @@ export class AudioManager {
     gain.connect(this.sfxGain);
     osc.start(t);
     osc.stop(t + 0.11);
+  }
+
+  public playLanding() {
+    this.initContext();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(140, t);
+    osc.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }
+
+  public playFootstep() {
+    this.initContext();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(120, t);
+    osc.frequency.exponentialRampToValueAtTime(60, t + 0.05);
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.07);
   }
 
   private lastCoinScheduleTime: number = 0;

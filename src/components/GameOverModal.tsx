@@ -61,8 +61,8 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           </div>
         ) : (
           <div className="mb-3">
-            <span className="text-[11px] font-bold text-slate-400">انتهت الجولة</span>
-            <h2 className="text-xl font-black text-white mt-0.5">سقط بسام!</h2>
+            <span className="text-[11px] font-bold text-amber-400">انتهت الجولة الحالية</span>
+            <h2 className="text-xl font-black text-white mt-0.5">محاولة بطولية يا بسام!</h2>
           </div>
         )}
 
@@ -101,6 +101,33 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Level & XP Progression Card */}
+        {(() => {
+          const reqXP = 100 + Math.max(0, Math.min(100, playerData.level)) * 20;
+          const currXP = Math.min(playerData.xp, reqXP);
+          const remXP = playerData.level >= 100 ? 0 : Math.max(0, reqXP - currXP);
+          const percent = playerData.level >= 100 ? 100 : Math.round((currXP / reqXP) * 100);
+          return (
+            <div className="w-full bg-slate-800/80 border border-blue-500/30 p-2.5 rounded-xl mb-3 text-right">
+              <div className="flex items-center justify-between text-xs font-bold mb-1">
+                <span className="text-amber-300">المستوى {playerData.level >= 100 ? '100 (الحد الأقصى)' : playerData.level}</span>
+                <span className="text-blue-300 font-mono text-[11px]">{currXP}/{reqXP} XP ({percent}%)</span>
+              </div>
+              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-700">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-amber-400 rounded-full transition-all duration-500"
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+              {playerData.level < 100 && (
+                <p className="text-[10px] text-slate-300 mt-1">
+                  تبقى <strong className="text-amber-400 font-bold font-mono">{remXP}</strong> نقطة XP لبلوغ المستوى {playerData.level + 1}
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Balance & Best Record Summary */}
         <div className="w-full flex items-center justify-between bg-slate-950/70 border border-slate-800 px-3 py-2 rounded-xl text-[11px] text-slate-300 mb-4">

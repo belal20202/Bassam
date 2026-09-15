@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { BiomeType, GameSettings, PlayerData, PowerUpType, RunStats, ActivePowerUp, PlayerCustomization, WeatherType } from '../types';
 import { HammoudiCharacter } from './character';
+import { CharacterController, GroundHitResult } from './characterController';
 import { WorldManager, getRandomBiome, ALL_BIOMES } from './world';
 import { ParticleFXManager } from './particleFX';
 import { audioManager } from './audio';
@@ -30,6 +31,7 @@ export class GameEngine {
   public camera: THREE.PerspectiveCamera;
   public renderer: THREE.WebGLRenderer;
   public character: HammoudiCharacter;
+  public characterController: CharacterController;
   public worldManager: WorldManager;
   public particleFX: ParticleFXManager;
 
@@ -62,18 +64,32 @@ export class GameEngine {
   // Camera Shake & Dynamics
   private cameraShakeIntensity: number = 0;
   private cameraRoll: number = 0;
+  private cameraLandingOffset: number = 0;
   private cameraBaseOffset: THREE.Vector3 = new THREE.Vector3(0, 3.8, -6.5);
   private cameraLookTarget: THREE.Vector3 = new THREE.Vector3(0, 1.6, 6);
 
   // Time & Animation
   private lastTime: number = 0;
   private animationFrameId: number | null = null;
+  private crashTimeoutId: number | null = null;
+  public isCrashing: boolean = false;
   private callbacks: GameEngineCallbacks;
 
   // Biome Rotation Distance Counter
   private lastBiomeIndex: number = 0;
   private biomesList: BiomeType[] = ALL_BIOMES;
   public lastLostBiome: BiomeType | null = null;
+  private lastWeatherBracket: number = 0;
+  private allWeathers: WeatherType[] = [
+    'SUNNY_MORNING',
+    'NOON_BRIGHT',
+    'GOLDEN_SUNSET',
+    'LIGHT_RAIN_MIST',
+    'BAGHDAD_STORM',
+    'BAGHDAD_DUST_STORM',
+    'SNOW_FLURRY',
+    'KARRADA_NIGHT',
+  ];
 
   constructor(canvas: HTMLCanvasElement, playerData: PlayerData, callbacks: GameEngineCallbacks) {
     this.playerData = playerData;
@@ -83,25 +99,33 @@ export class GameEngine {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(65, canvas.clientWidth / canvas.clientHeight, 0.1, 400);
 
-    // 2. WebGL Renderer
+    // 2. WebGL Renderer with mobile thermal & performance optimization
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: playerData.settings.graphicsQuality !== 'LOW',
+      antialias: true,
       powerPreference: 'high-performance',
       alpha: false,
+      stencil: false,
+      depth: true,
     });
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, playerData.settings.graphicsQuality === 'HIGH' ? 2 : 1.2));
-    this.renderer.shadowMap.enabled = playerData.settings.graphicsQuality !== 'LOW';
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Optimized pixel ratio to prevent thermal throttling and phone overheating on high-DPI screens
+    const maxDpr = playerData.settings.graphicsQuality === 'ULTRA' ? 1.5 : 1.25;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxDpr));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.BasicShadowMap; // Ultra-efficient shadow computation
 
     // 3. World & Character
     this.character = new HammoudiCharacter();
     this.character.applyCustomization(playerData.customization);
+    this.characterController = new CharacterController(this.character);
     this.scene.add(this.character.group);
 
     this.worldManager = new WorldManager(this.scene);
     this.particleFX = new ParticleFXManager(this.scene);
+
+    // Synchronize initial environment texture wear and Baghdad lighting
+    this.character.updateEnvironment(this.worldManager.currentWeather, this.worldManager.currentBiome);
 
     // Initialize run stats
     this.runStats = this.getInitialRunStats();
@@ -140,27 +164,53 @@ export class GameEngine {
     this.renderer.setSize(width, height);
   }
 
+  public setCallbacks(callbacks: GameEngineCallbacks) {
+    this.callbacks = callbacks;
+  }
+
   // ==================== GAME LIFECYCLE ====================
   public startRun(isHeadstart: boolean = false) {
+    // Clear any existing loops or crash timers to prevent overlapping sessions
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    if (this.crashTimeoutId !== null) {
+      clearTimeout(this.crashTimeoutId);
+      this.crashTimeoutId = null;
+    }
+
     this.isRunning = true;
     this.isPaused = false;
+    this.isCrashing = false;
     this.hasRevivedInCurrentRun = false;
     this.distanceRan = 0;
     this.coinsCollectedInRun = 0;
     this.coinStreakCombo = 0;
+    this.dodgeStreak = 0;
     this.scoreMultiplier = 1;
+    this.shieldHitRemaining = 0;
+    this.cameraShakeIntensity = 0;
+    this.cameraRoll = 0;
+    this.lastBiomeIndex = 0;
+    this.wasInAir = false;
+    this.footstepTimer = 0;
     this.activePowerUps.clear();
     
-    // Pick a fresh random starting Iraqi governorate (excluding the one just lost in previous session)
-    const startingBiome = getRandomBiome(this.lastLostBiome || undefined);
+    // Pick a fresh random starting Iraqi governorate (guaranteed different from the one just lost in previous session)
+    let lastLost: BiomeType | undefined = this.lastLostBiome || undefined;
+    try {
+      const saved = localStorage.getItem('bassam_last_lost_governorate');
+      if (saved) lastLost = saved as BiomeType;
+    } catch (_) {}
+
+    const startingBiome = getRandomBiome(lastLost);
     this.runStats = this.getInitialRunStats(startingBiome);
 
     this.character.resetToStart();
     this.character.applyCustomization(this.playerData.customization);
     this.worldManager.resetWorld(startingBiome);
     this.particleFX.clearAll();
-    this.wasInAir = false;
-    this.footstepTimer = 0;
 
     // Calculate base speed with skill bonuses
     const speedBonus = getSkillValue('speed', this.playerData.skills.speed) / 100;
@@ -168,6 +218,8 @@ export class GameEngine {
     this.currentSpeed = this.baseSpeed;
 
     // Start background energetic music and dynamic Baghdad atmospheric ambient audio
+    audioManager.stopMusic();
+    audioManager.stopAmbient();
     audioManager.startMusic(1.0);
     audioManager.startAmbient();
 
@@ -199,25 +251,41 @@ export class GameEngine {
   public stopRun() {
     this.isRunning = false;
     this.isPaused = false;
+    this.isCrashing = false;
+    if (this.crashTimeoutId !== null) {
+      clearTimeout(this.crashTimeoutId);
+      this.crashTimeoutId = null;
+    }
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
     audioManager.stopMusic();
     audioManager.stopAmbient();
+    this.activePowerUps.clear();
     this.startMenuPreview();
   }
 
   public startMenuPreview() {
     this.isRunning = false;
     this.isPaused = false;
+    this.isCrashing = false;
+    if (this.crashTimeoutId !== null) {
+      clearTimeout(this.crashTimeoutId);
+      this.crashTimeoutId = null;
+    }
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+    this.character.resetToStart();
     this.character.currentAction = 'IDLE';
     this.character.group.position.set(0, 0, 0);
     this.character.group.rotation.set(0, 0, 0);
+    this.camera.position.set(0, 1.45, 3.1);
+    this.camera.lookAt(0, 1.0, 0);
+    this.cameraRoll = 0;
+    this.cameraShakeIntensity = 0;
     this.lastTime = performance.now();
     this.menuLoop();
   }
@@ -264,8 +332,8 @@ export class GameEngine {
     let delta = (now - this.lastTime) / 1000;
     this.lastTime = now;
 
-    // Cap delta to prevent huge jumps on tab switch
-    if (delta > 0.1) delta = 0.1;
+    // Cap delta to prevent huge jumps and stutter on mobile devices
+    if (delta > 0.05) delta = 0.05;
 
     this.update(delta);
     this.render();
@@ -274,19 +342,26 @@ export class GameEngine {
   };
 
   private update(delta: number) {
+    if (this.isCrashing) {
+      this.character.update(delta, 0, 1, 0, 0);
+      this.particleFX.update(delta);
+      this.updateCamera(delta, 0);
+      return;
+    }
+
     // 1. Time slow power-up modifier
     const timeSlowActive = this.activePowerUps.has('TIME_SLOW');
     const worldDelta = timeSlowActive ? delta * 0.6 : delta;
 
-    // 2. Comfortable and Accessible Speed Scaling
+    // 2. Dynamic Progressive Difficulty & Speed Scaling based on distance
     this.adaptiveDifficultyFactor = Math.min(
-      1.0 + (this.distanceRan / 1200) * 0.2,
-      2.0
+      1.0 + (this.distanceRan / 400) * 0.35,
+      3.2
     );
 
     const isTurbo = this.activePowerUps.has('TURBO_SPEED');
-    const baseProgress = Math.min(this.distanceRan / 2000, 1.0) * 7.5;
-    this.currentSpeed = isTurbo ? 38 : (this.baseSpeed + baseProgress);
+    const distanceSpeedGain = Math.min((this.distanceRan / 500) * 2.2, 14.0);
+    this.currentSpeed = isTurbo ? 40 : (this.baseSpeed + distanceSpeedGain);
 
     // 3. Move Character forward with exact meter calculations
     const forwardStep = this.currentSpeed * worldDelta;
@@ -308,6 +383,21 @@ export class GameEngine {
       slideSkillBonus
     );
 
+    // Dynamic Landing Rebound Check: detect touchdown from air
+    if (this.wasInAir && this.character.isGrounded) {
+      this.wasInAir = false;
+      this.character.triggerLandingRebound();
+      this.triggerCameraShake(0.06);
+      this.cameraLandingOffset = -0.07;
+      audioManager.playLanding();
+    } else if (!this.character.isGrounded) {
+      this.wasInAir = true;
+    }
+
+    // Apply High-Precision Inverse Kinematics (IK) for realistic ground & obstacle contact
+    const groundHit = this.sampleBaghdadTerrain(this.character.laneX, this.character.group.position.z);
+    this.characterController.updateLegIK(groundHit);
+
     // 5. Update World Chunks & Dynamic Biome Rotation (Every 1500 meters exactly)
     const currentBiomeIdx = Math.floor(this.distanceRan / 1500) % this.biomesList.length;
     if (currentBiomeIdx !== this.lastBiomeIndex) {
@@ -315,6 +405,7 @@ export class GameEngine {
       const nextBiome = this.biomesList[currentBiomeIdx];
       this.worldManager.setBiome(nextBiome);
       audioManager.setBiome(nextBiome);
+      this.character.updateEnvironment(this.worldManager.currentWeather, nextBiome);
       this.runStats.biomeChangedCount += 1;
       if (!this.runStats.visitedBiomes.includes(nextBiome)) {
         this.runStats.visitedBiomes.push(nextBiome);
@@ -324,12 +415,16 @@ export class GameEngine {
       }
     }
 
-    // Dynamic Distance-Based Baghdad Weather Transition (Dust storm, sunset, rain, night, clear)
-    const targetWeather = this.getWeatherForDistance(this.distanceRan);
-    if (targetWeather !== this.worldManager.currentWeather) {
-      this.worldManager.setWeather(targetWeather);
+    // Dynamic Random Weather Transition every 1000 meters as requested
+    const currentBracket = Math.floor(Math.max(0, this.distanceRan) / 1000);
+    if (currentBracket !== this.lastWeatherBracket && currentBracket > 0) {
+      this.lastWeatherBracket = currentBracket;
+      const availableWeathers = this.allWeathers.filter((w) => w !== this.worldManager.currentWeather);
+      const nextRandomWeather = availableWeathers[Math.floor(Math.random() * availableWeathers.length)];
+      this.worldManager.setWeather(nextRandomWeather);
+      this.character.updateEnvironment(nextRandomWeather, this.worldManager.currentBiome);
       if (this.callbacks.onWeatherChange) {
-        this.callbacks.onWeatherChange(targetWeather);
+        this.callbacks.onWeatherChange(nextRandomWeather);
       }
     }
 
@@ -396,6 +491,9 @@ export class GameEngine {
     // Turbo Speed Jet Trail & Plasma Sparks
     if (isTurbo) {
       this.particleFX.emitTurboTrail(this.character.group.position);
+    } else if (this.currentSpeed > 16 && this.character.currentAction === 'RUN') {
+      // Dynamic City Runner Slipstream & Wind Ribbons (آثار سرعة عداء بغداد)
+      this.particleFX.emitCityRunnerSlipstream(this.character.group.position, this.currentSpeed);
     }
 
     // Dynamic Weather Atmospheric Particle Effects (العواصف الرملية، المطر، غبار بغداد وأضواء النيون)
@@ -536,64 +634,51 @@ export class GameEngine {
       }
     }
 
-    // 3. Check Obstacle Hits with Fair & Precision Hitboxes
+    // 3. Check Obstacle Hits with Fair & Highly Accurate Hitboxes
     for (const obs of this.worldManager.obstacleManager.obstacles) {
-      if (obs.isCollided || (obs as any).isCleared) continue;
+      if (obs.isCollided) continue;
 
-      // If obstacle is already behind the player, mark cleared immediately
-      if (pZ >= obs.mesh.position.z) {
-        (obs as any).isCleared = true;
+      const halfDepth = obs.depth / 2;
+      const obsZ = obs.mesh.position.z;
+
+      // If obstacle is already safely behind the player by its half-depth
+      if (pZ > obsZ + halfDepth + 0.2) {
         continue;
-      }
-
-      // If player is safely jumping over a jumpable obstacle or sliding under a slideable obstacle
-      if (pZ >= obs.mesh.position.z - 0.9) {
-        if (obs.canJump && (!this.character.isGrounded || pY > 0.12 || this.character.currentAction === 'JUMP')) {
-          (obs as any).isCleared = true;
-          continue;
-        }
-        if (obs.canSlide && (isSliding || this.character.slideTimer > 0 || this.character.currentAction === 'SLIDE')) {
-          (obs as any).isCleared = true;
-          continue;
-        }
       }
 
       // If obstacle is far ahead, skip checking
-      if (obs.mesh.position.z - pZ > 12) continue;
+      if (obsZ - pZ > 10) continue;
 
       const dx = Math.abs(pX - obs.mesh.position.x);
-      const dz = Math.abs(pZ - obs.mesh.position.z);
+      const dz = Math.abs(pZ - obsZ);
 
-      // Lateral tolerance: if player is in a different lane (separation > 0.72m), never hit
-      if (dx > 0.72) {
-        if (pZ > obs.mesh.position.z - 0.5) {
-          (obs as any).isCleared = true;
+      // Fair & accurate hitbox margins: avoid unfair grazing collision
+      const lateralThreshold = (obs.width / 2) * 0.72 + 0.16;
+      const depthThreshold = halfDepth * 0.70 + 0.22;
+
+      // Check if player's X-Z footprint intersects the obstacle's bounding volume
+      if (dx < lateralThreshold && dz < depthThreshold) {
+        // If Turbo Speed is active, smash through obstacles!
+        if (isTurbo) {
+          obs.isCollided = true;
+          this.particleFX.emitCoinCollectBurst(obs.mesh.position.clone());
+          continue;
         }
-        continue;
-      }
 
-      // If player has Super Jump power-up or high clearance:
-      if (pY > 1.2 || (this.activePowerUps.has('SUPER_JUMP') && pY > 0.8)) {
-        (obs as any).isCleared = true;
-        continue;
-      }
-
-      // Tight, fair collision thresholds
-      const halfWidth = (obs.width / 2) * 0.50;
-      const halfDepth = (obs.depth / 2) * 0.48;
-
-      if (dx < halfWidth && dz < halfDepth) {
-        // Vertical collision checks with high precision:
+        // Check if player can safely jump over this obstacle
         if (obs.canJump) {
-          if (!this.character.isGrounded || pY > 0.12 || this.character.currentAction === 'JUMP') {
-            (obs as any).isCleared = true;
+          const isJumping = !this.character.isGrounded || this.character.currentAction === 'JUMP' || pY > 0.08;
+          if (isJumping || this.activePowerUps.has('SUPER_JUMP')) {
+            // Safely in the air above the obstacle
             continue;
           }
         }
 
+        // Check if player can safely slide under this obstacle (e.g., hanging wires or beams)
         if (obs.canSlide) {
-          if (isSliding || this.character.slideTimer > 0 || this.character.currentAction === 'SLIDE') {
-            (obs as any).isCleared = true;
+          const isCurrentlySliding = isSliding || this.character.currentAction === 'SLIDE' || this.character.slideTimer > 0;
+          if (isCurrentlySliding) {
+            // Safely ducking/sliding underneath
             continue;
           }
         }
@@ -621,7 +706,14 @@ export class GameEngine {
   }
 
   private handlePlayerCrash() {
+    if (this.isCrashing) return;
+    this.isCrashing = true;
+    this.currentSpeed = 0; // stop moving forward immediately into further obstacles!
+
     this.lastLostBiome = this.worldManager.currentBiome;
+    try {
+      localStorage.setItem('bassam_last_lost_governorate', this.worldManager.currentBiome);
+    } catch (_) {}
     this.character.currentAction = 'CRASH';
     audioManager.playCrash();
     this.triggerCameraShake(0.9);
@@ -634,10 +726,55 @@ export class GameEngine {
     this.runStats.isNewRecord = this.distanceRan > this.playerData.highScoreDistance;
 
     // Slight delay before opening game over screen to let tumbling animation play
-    setTimeout(() => {
+    if (this.crashTimeoutId !== null) {
+      clearTimeout(this.crashTimeoutId);
+    }
+    this.crashTimeoutId = window.setTimeout(() => {
+      this.crashTimeoutId = null;
+      this.isCrashing = false;
       this.stopRun();
       this.callbacks.onGameOver(this.runStats);
     }, 700);
+  }
+
+  /**
+   * Samples Baghdad road terrain elevation, curbs, sidewalks, and ramps for Inverse Kinematics
+   */
+  public sampleBaghdadTerrain(x: number, z: number): GroundHitResult {
+    let groundY = 0;
+    const normal = new THREE.Vector3(0, 1, 0);
+
+    for (const obs of this.worldManager.obstacleManager.obstacles) {
+      if (obs.isCollided) continue;
+      const oZ = obs.mesh.position.z;
+      const halfDepth = obs.depth * 0.5;
+      if (z >= oZ - halfDepth && z <= oZ + halfDepth) {
+        const oX = obs.mesh.position.x;
+        const halfWidth = obs.width * 0.5;
+        if (Math.abs(x - oX) <= halfWidth) {
+          const topY = obs.mesh.position.y + obs.height * 0.5;
+          if (topY > groundY && topY <= 1.8) {
+            groundY = topY;
+            if ((obs as any).isRamp) {
+              const progress = Math.max(0, Math.min(1, (z - (oZ - halfDepth)) / obs.depth));
+              groundY = progress * obs.height;
+              normal.set(0, 0.94, -0.34).normalize();
+            }
+          }
+        }
+      }
+    }
+
+    const isWet = this.worldManager.currentWeather === 'LIGHT_RAIN_MIST' ||
+      this.worldManager.currentWeather === 'BAGHDAD_STORM' ||
+      this.worldManager.currentWeather === 'KARRADA_NIGHT';
+
+    return {
+      height: groundY,
+      normal,
+      isObstacle: groundY > 0,
+      surfaceType: groundY > 0 ? 'RAMP' : 'ASPHALT',
+    };
   }
 
   // ==================== CAMERA & FX ====================
@@ -656,41 +793,33 @@ export class GameEngine {
     this.camera.fov += (targetFOV - this.camera.fov) * Math.min(delta * 4, 1);
     this.camera.updateProjectionMatrix();
 
-    // Smooth Camera target position behind Bassam
-    const targetCamX = this.character.laneX * 0.65;
-    const targetCamY = pPos.y + this.cameraBaseOffset.y;
+    // Smoothly follow player position everywhere they go (X, Y, Z)
+    if (Math.abs(this.cameraLandingOffset) > 0.001) {
+      this.cameraLandingOffset = THREE.MathUtils.lerp(this.cameraLandingOffset, 0, delta * 9.0);
+    }
+
+    const targetCamX = pPos.x * 0.70; // Smooth camera tracking following player's lane transitions
+    const targetCamY = pPos.y + this.cameraBaseOffset.y + this.cameraLandingOffset;
     const targetCamZ = pPos.z + this.cameraBaseOffset.z;
 
-    this.camera.position.x += (targetCamX - this.camera.position.x) * Math.min(delta * 10, 1);
-    this.camera.position.y += (targetCamY - this.camera.position.y) * Math.min(delta * 8, 1);
+    this.camera.position.x += (targetCamX - this.camera.position.x) * Math.min(delta * 12, 1);
+    this.camera.position.y += (targetCamY - this.camera.position.y) * Math.min(delta * 8.5, 1);
     this.camera.position.z = targetCamZ;
 
-    // Apply Camera Shake offset
+    // Apply Camera Shake offset on vertical and horizontal axes during impacts
     if (this.cameraShakeIntensity > 0) {
-      this.camera.position.x += (Math.random() - 0.5) * this.cameraShakeIntensity;
-      this.camera.position.y += (Math.random() - 0.5) * this.cameraShakeIntensity;
+      this.camera.position.x += (Math.random() - 0.5) * this.cameraShakeIntensity * 0.25;
+      this.camera.position.y += (Math.random() - 0.5) * this.cameraShakeIntensity * 0.3;
       this.cameraShakeIntensity -= delta * 2.5;
       if (this.cameraShakeIntensity < 0) this.cameraShakeIntensity = 0;
     }
 
-    // Dynamic Camera Bank Roll when changing lanes
-    // Moving Left (targetLaneX < laneX): tilts view smoothly into the left turn
-    // Moving Right (targetLaneX > laneX): tilts view smoothly into the right turn
-    const laneDiff = this.character.targetLaneX - this.character.laneX;
-    const targetCamRoll = -laneDiff * 0.035;
-    this.cameraRoll += (targetCamRoll - this.cameraRoll) * Math.min(delta * 12, 1);
-
-    // Look ahead at Bassam's running path
+    // Look ahead smoothly focused on player's trajectory
     this.camera.lookAt(
-      pPos.x * 0.4,
+      pPos.x * 0.45,
       pPos.y + this.cameraLookTarget.y,
       pPos.z + this.cameraLookTarget.z
     );
-
-    // Apply dynamic camera tilt around gaze axis
-    if (Math.abs(this.cameraRoll) > 0.0001) {
-      this.camera.rotateZ(this.cameraRoll);
-    }
   }
 
   private render() {
@@ -733,24 +862,20 @@ export class GameEngine {
     audioManager.playSlide();
   }
 
-  // Dynamic Weather Progression based on distance run through Baghdad (1000m, 2500m, 3500m, 5000m, 6500m, 8000m)
+  // Dynamic Weather Progression every 1000m continuously as requested
   public getWeatherForDistance(distance: number): WeatherType {
-    const cycleLength = 8000;
-    const posInCycle = distance % cycleLength;
+    const cycle: WeatherType[] = [
+      'SUNNY_MORNING',      // 0m - 1000m: شمس صباحية مشرقة (علامة الشمس)
+      'BAGHDAD_DUST_STORM', // 1000m - 2000m: عاصفة ترابية (علامة العاصفة)
+      'GOLDEN_SUNSET',      // 2000m - 3000m: غروب ذهبي ساحر
+      'LIGHT_RAIN_MIST',    // 3000m - 4000m: رذاذ منعش وأمطار (علامة الأمطار)
+      'SNOW_FLURRY',        // 4000m - 5000m: ثلوج شتوية نقية (علامة الثلوج)
+      'BAGHDAD_STORM',      // 5000m - 6000m: عاصفة مطرية ورعدية (علامة العاصفة والأمطار)
+      'KARRADA_NIGHT',      // 6000m - 7000m: ليل جميل وهادئ (علامة الليل الجميل)
+    ];
 
-    if (posInCycle < 1000) {
-      return 'SUNNY_MORNING'; // 0m - 1000m: صباح بغدادي مشمس
-    } else if (posInCycle < 2500) {
-      return 'BAGHDAD_DUST_STORM'; // 1000m - 2500m: غبار بغداد وعاصفة ترابية دافئة
-    } else if (posInCycle < 3500) {
-      return 'GOLDEN_SUNSET'; // 2500m - 3500m: غروب دجلة الذهبي
-    } else if (posInCycle < 5000) {
-      return 'LIGHT_RAIN_MIST'; // 3500m - 5000m: رذاذ وضباب دجلة المنعش
-    } else if (posInCycle < 6500) {
-      return 'BAGHDAD_STORM'; // 5000m - 6500m: أمطار رعدية مع لمعان البرق
-    } else {
-      return 'KARRADA_NIGHT'; // 6500m - 8000m+: ليل الكرادة وأنوار النيون
-    }
+    const slotIndex = Math.floor(Math.max(0, distance) / 1000) % cycle.length;
+    return cycle[slotIndex];
   }
 
   public dispose() {

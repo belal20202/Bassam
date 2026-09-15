@@ -20,13 +20,14 @@ export type GameState =
 export type Lane = -1 | 0 | 1; // Left (-1), Middle (0), Right (1)
 
 export type WeatherType = 
-  | 'SUNNY_MORNING'      // صباح بغدادي مشمس وجميل
-  | 'NOON_BRIGHT'        // ظهيرة بغداد الساطعة
-  | 'GOLDEN_SUNSET'      // غروب دجلة الذهبي
-  | 'LIGHT_RAIN_MIST'    // رذاذ منعش وضباب خفيف
-  | 'BAGHDAD_STORM'      // أمطار رعدية موسمية مع برق
-  | 'BAGHDAD_DUST_STORM' // عاصفة ترابية وغبار بغدادي متصاعد
-  | 'KARRADA_NIGHT';     // ليل الكرادة وأنوار النيون
+  | 'SUNNY_MORNING'      // صباح مشمس وجميل
+  | 'NOON_BRIGHT'        // شمس ساطعة
+  | 'GOLDEN_SUNSET'      // غروب ذهبي
+  | 'LIGHT_RAIN_MIST'    // أمطار خفيفة ورذاذ منعش
+  | 'BAGHDAD_STORM'      // أمطار رعدية مع لمعان البرق
+  | 'BAGHDAD_DUST_STORM' // عاصفة ترابية دافئة
+  | 'SNOW_FLURRY'        // ثلوج شتوية بيضاء نقية
+  | 'KARRADA_NIGHT';     // ليل جميل ونجوم ساطعة
 
 export type BiomeType = 
   // المحافظات العراقية الـ 18 الرسمية (18 Iraqi Governorates)
@@ -47,7 +48,8 @@ export type BiomeType =
   | 'MAYSAN'           // ميسان - العمارة وسحر الأهوار العريقة
   | 'DHI_QAR'          // ذي قار - الناصرية وحضارة أور السومرية
   | 'MUTHANNA'         // المثنى - السماوة وعبق الصحراء وبحيرة ساوة
-  | 'QADISIYYAH';      // القادسية - الديوانية ونخيل الفرات الأوسط
+  | 'QADISIYYAH'       // القادسية / الديوانية
+  | 'DIWANIYAH';       // الديوانية - نخيل الفرات الأوسط ومدينة الكرم
 
 export type PowerUpType = 
   | 'MAGNET'         // مغناطيس العملات
@@ -146,6 +148,54 @@ export interface PlayerCustomization {
   equippedAccessory: string;
 }
 
+// ==================== UNITY-COMPATIBLE CHARACTER ANATOMY & APPEARANCE ====================
+export interface CharacterAppearance {
+  // Facial Structure (هيكل وتفاصيل الوجه)
+  eyeColor: {
+    r: number;
+    g: number;
+    b: number;
+    hex: string;
+    label: string;
+  };
+  noseScale: number;
+  mouthScale: number;
+  earSize: number;
+
+  // Body Proportions (أبعاد وتناسق الجسم)
+  heightMeters: number;
+  bodyFatPercentage: number;
+  hasFiveFingersPerHand: boolean;
+}
+
+export interface CharacterProfile {
+  characterName: string;
+  age: number;
+  description: string;
+  appearance: CharacterAppearance;
+}
+
+export const DEFAULT_CHARACTER_PROFILE: CharacterProfile = {
+  characterName: 'بسام',
+  age: 22,
+  description: 'شاب ببنية وجسم طبيعي',
+  appearance: {
+    eyeColor: {
+      r: 0.25,
+      g: 0.15,
+      b: 0.05,
+      hex: '#40260d',
+      label: 'بني طبيعي',
+    },
+    noseScale: 1.0,
+    mouthScale: 1.0,
+    earSize: 1.0,
+    heightMeters: 1.78,
+    bodyFatPercentage: 15.0,
+    hasFiveFingersPerHand: true,
+  },
+};
+
 export interface GameSettings {
   musicVolume: number;     // 0 - 1
   sfxVolume: number;       // 0 - 1
@@ -163,6 +213,7 @@ export interface PlayerTitle {
   requirementDescription: string;
   badge: string; // Icon or emoji
   rarity: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+  requiredLevel?: number;
   isUnlocked: boolean;
   unlockedAt?: number;
 }
@@ -171,6 +222,7 @@ export interface DailyChallenge {
   id: string;
   title: string;
   description: string;
+  badge?: string;
   targetType: 
     | 'DISTANCE_SINGLE'
     | 'COINS_TOTAL'

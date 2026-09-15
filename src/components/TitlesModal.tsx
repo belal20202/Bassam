@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { PlayerData, PlayerTitle } from '../types';
-import { TITLES_LIST } from '../data/titles';
+import { TITLES_LIST, evaluateUnlockedTitles } from '../data/titles';
 import { X, Award, CheckCircle2, Lock, Sparkles, Crown } from 'lucide-react';
 import { audioManager } from '../engine/audio';
 
@@ -47,8 +47,9 @@ export const TitlesModal: React.FC<TitlesModalProps> = ({
   onClose,
   onSelectTitle,
 }) => {
-  const unlockedSet = new Set(playerData.unlockedTitles || ['title_novice_runner']);
-  const activeTitle = playerData.activeTitleId || 'title_novice_runner';
+  const currentUnlocked = evaluateUnlockedTitles(playerData);
+  const unlockedSet = new Set(currentUnlocked);
+  const activeTitle = playerData.activeTitleId || (unlockedSet.has('title_lvl_5') ? 'title_lvl_5' : 'title_starter');
 
   const handleEquip = (titleId: string) => {
     if (!unlockedSet.has(titleId)) return;
@@ -67,7 +68,7 @@ export const TitlesModal: React.FC<TitlesModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-white leading-tight">الألقاب الفخرية</h2>
-              <p className="text-[11px] text-slate-400">ألقاب مميزة تمنحك مكانة خاصة في بغداد</p>
+              <p className="text-[11px] text-slate-400">ألقاب بطولية خارقة تمنحك مكانة أسطورية</p>
             </div>
           </div>
 
@@ -88,10 +89,10 @@ export const TitlesModal: React.FC<TitlesModalProps> = ({
             <span className="text-xl">
               {TITLES_LIST.find((t) => t.id === activeTitle)?.badge || '🏃'}
             </span>
-            <div>
+            <div className="min-w-0">
               <span className="text-[9px] text-slate-400 block leading-tight">اللقب الحالي</span>
-              <span className="text-xs sm:text-sm font-black text-amber-400">
-                {TITLES_LIST.find((t) => t.id === activeTitle)?.name || 'عداء مبتدئ'}
+              <span className="text-xs sm:text-sm font-black text-amber-400 truncate block max-w-[220px] sm:max-w-[340px]">
+                {TITLES_LIST.find((t) => t.id === activeTitle)?.name || 'نبض البداية'}
               </span>
             </div>
           </div>
@@ -101,7 +102,7 @@ export const TitlesModal: React.FC<TitlesModalProps> = ({
         </div>
 
         {/* Titles List Grid */}
-        <div className="p-3 sm:p-4 overflow-y-auto space-y-2 flex-1 custom-scrollbar">
+        <div className="p-3 sm:p-4 overflow-y-auto space-y-2.5 flex-1 custom-scrollbar">
           {TITLES_LIST.map((title) => {
             const isUnlocked = unlockedSet.has(title.id);
             const isActive = activeTitle === title.id;
@@ -111,38 +112,46 @@ export const TitlesModal: React.FC<TitlesModalProps> = ({
               <div
                 key={title.id}
                 onClick={() => isUnlocked && handleEquip(title.id)}
-                className={`border rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 transition-all ${
+                className={`border rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 transition-all overflow-hidden ${
                   style.border
                 } ${style.bg} ${
-                  isUnlocked ? 'cursor-pointer hover:border-amber-500/50' : 'opacity-60'
-                } ${isActive ? 'ring-1.5 ring-amber-400' : ''}`}
+                  isUnlocked ? 'cursor-pointer hover:border-amber-500/50' : 'opacity-65'
+                } ${isActive ? 'ring-2 ring-amber-400/80 shadow-md' : ''}`}
               >
-                <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-center text-xl shrink-0">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0 overflow-hidden">
+                  <div className="w-9 h-9 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-center text-xl shrink-0">
                     {title.badge}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h3 className="font-bold text-xs text-white truncate">{title.name}</h3>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h3 className="font-bold text-xs sm:text-sm text-white">
+                        {title.name}
+                      </h3>
                       <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${style.badgeBg}`}>
                         {style.label}
                       </span>
                     </div>
 
-                    <p className="text-[10px] text-slate-300 mt-0.5 truncate">{title.description}</p>
-                    
-                    <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400">
-                      <span className="text-slate-500">الفتح:</span>
-                      <span className="truncate">{title.requirementDescription}</span>
+                    <p className="text-[11px] text-slate-300 leading-snug whitespace-normal break-words">
+                      {title.description}
+                    </p>
+
+                    <div className="mt-1.5 flex items-center gap-2 text-[10px] text-slate-300 flex-wrap">
+                      <span className="text-amber-300 font-bold bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 text-[9px]">
+                        مستوى {title.requiredLevel}
+                      </span>
+                      <span className="text-slate-400 text-[10px]">
+                        {title.requirementDescription}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Status / Equip Action */}
-                <div className="shrink-0 w-full sm:w-auto flex justify-end">
+                {/* Status / Equip Action - Fixed width so cards stay uniform */}
+                <div className="shrink-0 w-20 flex justify-end">
                   {isActive ? (
-                    <div className="flex items-center gap-1 bg-amber-500 text-slate-950 px-2.5 py-1 rounded-lg font-black text-[11px] shadow-sm">
+                    <div className="w-full flex items-center justify-center gap-1 bg-amber-500 text-slate-950 px-2 py-1 rounded-lg font-black text-[11px] shadow-sm">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>مفعل</span>
                     </div>
@@ -152,12 +161,12 @@ export const TitlesModal: React.FC<TitlesModalProps> = ({
                         e.stopPropagation();
                         handleEquip(title.id);
                       }}
-                      className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white px-3 py-1 rounded-lg font-bold text-xs border border-slate-700 transition-colors"
+                      className="w-full bg-slate-800 hover:bg-slate-700 active:scale-95 text-white px-2 py-1 rounded-lg font-bold text-xs border border-slate-700 transition-all text-center shadow-sm"
                     >
                       تفعيل
                     </button>
                   ) : (
-                    <div className="flex items-center gap-1 bg-slate-950/80 text-slate-500 px-2.5 py-1 rounded-lg text-[10px] font-mono border border-slate-800">
+                    <div className="w-full flex items-center justify-center gap-1 bg-slate-950/80 text-slate-500 px-2 py-1 rounded-lg text-[10px] font-mono border border-slate-800">
                       <Lock className="w-3 h-3" />
                       <span>مقفل</span>
                     </div>

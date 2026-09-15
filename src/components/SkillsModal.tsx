@@ -78,7 +78,7 @@ export const SkillsModal: React.FC<SkillsModalProps> = ({
         </div>
 
         {/* Skills List */}
-        <div className="p-3 sm:p-4 overflow-y-auto space-y-2.5 flex-1 custom-scrollbar">
+        <div className="p-3 sm:p-4 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
           {Object.values(SKILL_DEFINITIONS).map((skill) => {
             const currentLevel = playerData.skills[skill.id] || 1;
             const isMaxLevel = currentLevel >= skill.maxLevel;
@@ -90,40 +90,41 @@ export const SkillsModal: React.FC<SkillsModalProps> = ({
             return (
               <div
                 key={skill.id}
-                className="bg-slate-800/70 border border-slate-700/60 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-600 transition-all"
+                className="bg-slate-800/80 border border-slate-700/70 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 hover:border-slate-600 transition-all"
               >
                 {/* Skill Info */}
-                <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-slate-950/60 border border-slate-700 flex items-center justify-center shrink-0">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-slate-950/70 border border-slate-700 flex items-center justify-center shrink-0 mt-0.5">
                     {getSkillIcon(skill.icon)}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-xs text-white truncate">{skill.name}</h3>
-                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-bold text-sm text-white break-words">{skill.name}</h3>
+                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
                         مستوى {currentLevel}/{skill.maxLevel}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">{skill.description}</p>
+                    <p className="text-xs text-slate-300 leading-relaxed break-words">{skill.description}</p>
                     
                     {/* Current Effect Tag */}
-                    <div className="mt-1 text-[10px] font-semibold text-emerald-400">
-                      {skill.effectName}: <span className="font-mono text-white font-bold">{currentValue}{skill.effectUnit}</span>
+                    <div className="text-xs font-semibold text-emerald-400 flex flex-wrap items-center gap-1 pt-0.5">
+                      <span>{skill.effectName}:</span>
+                      <span className="font-mono text-white font-bold">{currentValue}{skill.effectUnit}</span>
                       {!isMaxLevel && (
-                        <span className="text-slate-400 mr-1.5 text-[9px]">
+                        <span className="text-slate-400 text-[11px] mr-1">
                           (التالي: <span className="text-amber-400 font-mono font-bold">{nextValue}{skill.effectUnit}</span>)
                         </span>
                       )}
                     </div>
 
                     {/* Level Progress Dots */}
-                    <div className="flex items-center gap-1 mt-1.5 max-w-xs">
+                    <div className="flex items-center gap-1 pt-1 max-w-xs">
                       {Array.from({ length: skill.maxLevel }).map((_, idx) => (
                         <div
                           key={idx}
                           className={`h-1.5 flex-1 rounded-full transition-all ${
                             idx < currentLevel
-                              ? 'bg-gradient-to-r from-amber-500 to-yellow-300'
+                              ? 'bg-gradient-to-r from-amber-500 to-yellow-300 shadow-sm'
                               : 'bg-slate-700'
                           }`}
                         />
@@ -135,22 +136,24 @@ export const SkillsModal: React.FC<SkillsModalProps> = ({
                 {/* Upgrade Button */}
                 <div className="w-full sm:w-auto shrink-0 flex justify-end">
                   {isMaxLevel ? (
-                    <div className="flex items-center gap-1 bg-emerald-950/80 border border-emerald-600/60 text-emerald-300 px-3 py-1.5 rounded-xl text-[11px] font-bold">
-                      <Check className="w-3.5 h-3.5" />
+                    <div className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-emerald-950/80 border border-emerald-600/60 text-emerald-300 px-3.5 py-2 rounded-xl text-xs font-bold">
+                      <Check className="w-4 h-4" />
                       <span>المستوى الأقصى</span>
                     </div>
                   ) : (
                     <button
                       onClick={() => handleUpgrade(skill.id, upgradeCost)}
                       disabled={!canAfford}
-                      className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                      className={`w-full sm:w-auto flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition-all ${
                         canAfford
-                          ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 hover:brightness-110 shadow-sm active:scale-95'
-                          : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
+                          ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 hover:brightness-110 shadow-md active:scale-98'
+                          : 'bg-slate-800/90 text-slate-500 border border-slate-700/80 cursor-not-allowed'
                       }`}
                     >
                       <span>ترقية</span>
-                      <span className="font-mono font-bold text-[11px]">({upgradeCost.toLocaleString('en-US')} د.ع)</span>
+                      <span className="font-mono font-bold text-[11px] px-1.5 py-0.5 rounded bg-black/20 whitespace-nowrap">
+                        {upgradeCost.toLocaleString('en-US')} د.ع
+                      </span>
                     </button>
                   )}
                 </div>

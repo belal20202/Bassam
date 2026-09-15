@@ -4,41 +4,309 @@
  */
 
 import * as THREE from 'three';
-import { PlayerCustomization } from '../types';
+import { PlayerCustomization, CharacterAppearance, DEFAULT_CHARACTER_PROFILE, BiomeType, WeatherType } from '../types';
 import { SHOP_ITEMS } from '../data/items';
+import { CharacterTextureManager } from './characterTextures';
+import { DynamicSkeletalRig, ArticulatedHandRig } from './skeletalRig';
 
 export type CharacterAction = 'RUN' | 'JUMP' | 'SLIDE' | 'STUMBLE' | 'CRASH' | 'IDLE';
 
+/**
+ * Procedural Texture & PBR Material Generator for Bassam
+ */
+export class HighPrecisionTextureEngine {
+  /**
+   * Athletic Runner Techwear Hoodie Texture with Baghdad Heritage & Iraqi Flag Badge
+   */
+  public static createHoodieTexture(primaryColor: string, secondaryColor: string): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    // Base athletic techwear fabric
+    const baseGrad = ctx.createLinearGradient(0, 0, 0, 512);
+    baseGrad.addColorStop(0, primaryColor);
+    baseGrad.addColorStop(1, '#0f172a');
+    ctx.fillStyle = baseGrad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Subtle technical grid pattern
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < 512; x += 16) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 512);
+      ctx.stroke();
+    }
+
+    // Bold Aerodynamic Chevron Speed Stripes across chest
+    ctx.strokeStyle = secondaryColor;
+    ctx.lineWidth = 14;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(40, 110);
+    ctx.lineTo(256, 175);
+    ctx.lineTo(472, 110);
+    ctx.stroke();
+
+    // Luminescent neon cyan accent line
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(40, 126);
+    ctx.lineTo(256, 191);
+    ctx.lineTo(472, 126);
+    ctx.stroke();
+
+    // Center Gold Zipper Track
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(250, 160, 12, 352);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    for (let z = 165; z < 505; z += 8) {
+      ctx.beginPath();
+      ctx.moveTo(251, z);
+      ctx.lineTo(261, z);
+      ctx.stroke();
+    }
+
+    // Gold Zipper Slider
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(248, 200, 16, 22);
+
+    // Iraqi National Flag Ribbon Badge (Red, White, Black with Green Takbir)
+    const ribbonY = 190;
+    ctx.fillStyle = '#ef4444'; // Red
+    ctx.fillRect(65, ribbonY, 75, 8);
+    ctx.fillStyle = '#ffffff'; // White
+    ctx.fillRect(65, ribbonY + 8, 75, 8);
+    ctx.fillStyle = '#0f172a'; // Black
+    ctx.fillRect(65, ribbonY + 16, 75, 8);
+
+    // Green Takbir Arabic calligraphy accent in center
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('الله أكبر', 102, ribbonY + 14);
+
+    // Golden 8-pointed Mesopotamian Star of Ishtar Emblem
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.arc(410, 200, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+  }
+
+  /**
+   * Expressive, High-Detail Stylized Iris Texture (256x256)
+   * Featuring multi-tone amber hazel depth, glowing crescent reflex, and sparkling catchlights
+   */
+  public static createIrisTexture(hexColor: string): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const cx = 128;
+    const cy = 128;
+    const r = 120;
+
+    // 1. Outer Limbal Ring (Bold, crisp boundary)
+    ctx.fillStyle = '#140a04';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Multi-tone Iris Gradient (Deep shadow at top, radiant amber/hazel below)
+    const irisGrad = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
+    irisGrad.addColorStop(0, '#1a0d05'); // Eyelid cast shadow
+    irisGrad.addColorStop(0.35, '#3b1c0a');
+    irisGrad.addColorStop(0.70, hexColor);
+    irisGrad.addColorStop(1.0, '#f59e0b'); // Warm glowing lower iris
+    ctx.fillStyle = irisGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Radiant Iris Striae (Intricate rays of warm light)
+    ctx.save();
+    ctx.translate(cx, cy);
+    for (let angle = 0; angle < Math.PI * 2; angle += 0.12) {
+      ctx.strokeStyle = Math.sin(angle * 3) > 0 ? 'rgba(251, 191, 36, 0.45)' : 'rgba(217, 119, 6, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * 32, Math.sin(angle) * 32);
+      ctx.lineTo(Math.cos(angle) * (r - 10), Math.sin(angle) * (r - 10));
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 4. Luminous Lower Crescent Reflection (Signature animated movie eye glow)
+    const crescentGrad = ctx.createRadialGradient(cx, cy + 50, 10, cx, cy + 50, 75);
+    crescentGrad.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
+    crescentGrad.addColorStop(0.55, 'rgba(245, 158, 11, 0.50)');
+    crescentGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = crescentGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy + 25, 75, 0.15 * Math.PI, 0.85 * Math.PI, false);
+    ctx.fill();
+
+    // 5. Deep Obsidian Pupil
+    const pupilGrad = ctx.createRadialGradient(cx, cy - 8, 4, cx, cy, 46);
+    pupilGrad.addColorStop(0, '#0a0502');
+    pupilGrad.addColorStop(1, '#180c05');
+    ctx.fillStyle = pupilGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 4, 46, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 6. Sparkling Glossy Specular Catchlights (Animated Reflections)
+    // Primary large glossy catchlight (Top-Left)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(cx - 36, cy - 36, 26, 22, -Math.PI * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Secondary smaller catchlight (Bottom-Right)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.beginPath();
+    ctx.arc(cx + 42, cy + 38, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tiny diamond glint (Center-Right)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.beginPath();
+    ctx.arc(cx + 25, cy - 20, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+  }
+}
+
+/**
+ * Facial Rig Components
+ */
+export interface FacialRig {
+  faceGroup: THREE.Group;
+  leftEyeGroup: THREE.Group;
+  rightEyeGroup: THREE.Group;
+  leftUpperLid: THREE.Mesh;
+  rightUpperLid: THREE.Mesh;
+  leftEyelash: THREE.Mesh;
+  rightEyelash: THREE.Mesh;
+  leftEyebrowBone: THREE.Group;
+  rightEyebrowBone: THREE.Group;
+  noseGroup: THREE.Group;
+  mouthGroup: THREE.Group;
+  lipsMesh: THREE.Mesh;
+  teethMesh: THREE.Mesh;
+}
+
+/**
+ * ============================================================================
+ * BAGHDAD RUNNER «بسام» (BASSAM) - SUBWAY SURFERS STYLE 3D CHARACTER
+ * Fully sculpted realistic/stylized body, modern street haircut, expressive face,
+ * chunky runner sneakers, and fluid biomechanics with landing rebound physics.
+ * ============================================================================
+ */
 export class BassamCharacter {
   public group: THREE.Group;
 
-  // Body Skeleton & Groups
+  // Character Profile & Identity
+  public characterName: string = 'بسام';
+  public age: number = 22;
+  public appearance: CharacterAppearance = { ...DEFAULT_CHARACTER_PROFILE.appearance };
+
+  // Master Skeletal Hierarchy
   public rootBone: THREE.Group;
-  public hipsGroup: THREE.Group;
-  public hips: THREE.Mesh;
-  public spineGroup: THREE.Group;
-  public chestGroup: THREE.Group;
-  public chest: THREE.Mesh;
-  public innerShirt: THREE.Mesh;
-  public hoodieCollar: THREE.Group;
-  public backpackGroup: THREE.Group;
-  public smartwatchMesh: THREE.Group;
+  public pelvisBone: THREE.Group;
+  public pelvisMesh: THREE.Mesh;
+  public spineLowerBone: THREE.Group;
+  public chestBone: THREE.Group;
+  public chestMesh: THREE.Mesh;
+  public neckBone: THREE.Group;
+  public headBone: THREE.Group;
+  public headMesh: THREE.Mesh;
 
-  public headGroup: THREE.Group;
-  public head: THREE.Mesh;
+  // Facial Elements
+  public facialRig: FacialRig;
+  public lipsMesh: THREE.Mesh;
+  public earL: THREE.Group;
+  public earR: THREE.Group;
   public hairGroup: THREE.Group;
-  public faceGroup: THREE.Group;
+  public hairFringe: THREE.Group;
+  public runnerCapGroup: THREE.Group;
+  public drapedHood: THREE.Mesh;
+  public drawstringL: THREE.Mesh;
+  public drawstringR: THREE.Mesh;
+  public kangarooPocket: THREE.Mesh;
+  public backpackGroup: THREE.Group;
 
-  // Limbs
+  // Upper Limbs
+  public clavicleLeftBone: THREE.Group;
+  public clavicleRightBone: THREE.Group;
+  public shoulderLeftBone: THREE.Group;
+  public shoulderRightBone: THREE.Group;
+  public bicepLeftMesh: THREE.Mesh;
+  public bicepRightMesh: THREE.Mesh;
+  public elbowLeftBone: THREE.Group;
+  public elbowRightBone: THREE.Group;
+  public forearmLeftMesh: THREE.Mesh;
+  public forearmRightMesh: THREE.Mesh;
+  public wristLeftBone: THREE.Group;
+  public wristRightBone: THREE.Group;
+  public biometricWatch: THREE.Group;
+
+  // Hands Rigs
+  public handLeftRig: ArticulatedHandRig;
+  public handRightRig: ArticulatedHandRig;
+
+  // Lower Limbs Skeleton
+  public hipLeftBone: THREE.Group;
+  public hipRightBone: THREE.Group;
+  public thighLeftBone: THREE.Group;
+  public thighRightBone: THREE.Group;
+  public thighLeftMesh: THREE.Mesh;
+  public thighRightMesh: THREE.Mesh;
+  public kneeLeftBone: THREE.Group;
+  public kneeRightBone: THREE.Group;
+  public shinLeftBone: THREE.Group;
+  public shinRightBone: THREE.Group;
+  public ankleLeftBone: THREE.Group;
+  public ankleRightBone: THREE.Group;
+  public shoeLeftGroup: THREE.Group;
+  public shoeRightGroup: THREE.Group;
+
+  // Systems & Managers
+  public textureManager: CharacterTextureManager;
+  public skeletalRig: DynamicSkeletalRig;
+
+  // Backward Compatibility Aliases
   public leftShoulder: THREE.Group;
   public rightShoulder: THREE.Group;
   public leftArm: THREE.Group;
   public rightArm: THREE.Group;
   public leftForearm: THREE.Group;
   public rightForearm: THREE.Group;
-  public leftHand: THREE.Mesh;
-  public rightHand: THREE.Mesh;
-
+  public leftHand: THREE.Group;
+  public rightHand: THREE.Group;
+  public leftFingers: THREE.Group;
+  public rightFingers: THREE.Group;
+  public leftThumb: THREE.Group;
+  public rightThumb: THREE.Group;
+  public pelvisGroup: THREE.Group;
+  public spineGroup: THREE.Group;
+  public chestGroup: THREE.Group;
+  public neckGroup: THREE.Group;
+  public headGroup: THREE.Group;
+  public faceGroup: THREE.Group;
   public leftHipJoint: THREE.Group;
   public rightHipJoint: THREE.Group;
   public leftLeg: THREE.Group;
@@ -52,1309 +320,1547 @@ export class BassamCharacter {
   public leftShoeGroup: THREE.Group;
   public rightShoeGroup: THREE.Group;
 
-  // Accessories
+  // Shop & Customization Mounts
+  public thobeSkirt: THREE.Mesh;
   public shemaghMesh: THREE.Group | null = null;
   public sunglassesMesh: THREE.Group | null = null;
   public headphonesMesh: THREE.Group | null = null;
+  public tacticalMaskMesh: THREE.Group | null = null;
+  public scarfMesh: THREE.Group | null = null;
 
-  // Dynamic Materials for live skinning & shop equips
-  private skinMat: THREE.MeshStandardMaterial;
-  private hairMat: THREE.MeshStandardMaterial;
-  private jacketShellMat: THREE.MeshStandardMaterial;
-  private jacketBackMat: THREE.MeshStandardMaterial;
-  private jacketSleeveMat: THREE.MeshStandardMaterial;
-  private hoodInteriorMat: THREE.MeshStandardMaterial;
-  private innerShirtMat: THREE.MeshStandardMaterial;
-  private pantsMat: THREE.MeshStandardMaterial;
-  private pantsStripesMat: THREE.MeshStandardMaterial;
-  private shoeUpperMat: THREE.MeshStandardMaterial;
-  private shoeMidsoleMat: THREE.MeshStandardMaterial;
-  private shoeOutsoleMat: THREE.MeshStandardMaterial;
-  private shoeAirBubbleMat: THREE.MeshPhysicalMaterial;
-  private shoeAccentMat: THREE.MeshStandardMaterial;
-  private backpackMat: THREE.MeshStandardMaterial;
-  private zipperMat: THREE.MeshStandardMaterial;
-  private redAccentMat: THREE.MeshStandardMaterial;
-  private watchScreenMat: THREE.MeshBasicMaterial;
+  // PBR Materials
+  public skinMat: THREE.MeshStandardMaterial;
+  public faceMat: THREE.MeshStandardMaterial;
+  public handsMat: THREE.MeshStandardMaterial;
+  public eyeIrisMat: THREE.MeshStandardMaterial;
+  public hoodieMat: THREE.MeshStandardMaterial;
+  public pantsMat: THREE.MeshStandardMaterial;
+  public shoeMat: THREE.MeshStandardMaterial;
+  public shoeSoleMat: THREE.MeshStandardMaterial;
+  public hairMat: THREE.MeshStandardMaterial;
+  public capMat: THREE.MeshStandardMaterial;
+  public backpackMat: THREE.MeshStandardMaterial;
+  public goldTrimMat: THREE.MeshStandardMaterial;
 
-  // Powerup FX Meshes
+  // Power-Up Meshes
   public shieldMesh: THREE.Mesh;
   public magnetAura: THREE.Group;
   public turboJetMesh: THREE.Group;
-  public trailParticles: THREE.Points;
-  private trailPositions: Float32Array;
-  private trailColors: Float32Array;
-  private trailCount: number = 80;
 
-  // Animation state
+  // Dust Particle System
+  public footstepDustParticles: THREE.Points;
+  private footstepPositions: Float32Array;
+  private footstepLife: Float32Array;
+  private footstepVel: Float32Array;
+  private nextDustIdx: number = 0;
+
+  // Kinematic & Animation State
   public currentAction: CharacterAction = 'RUN';
-  public animTime: number = 0;
-  public gaitPhase: number = 0;
-  public jumpY: number = 0;
-  public jumpVelocity: number = 0;
-  public isGrounded: boolean = true;
-  public jumpDuration: number = 0;
-  public slideTimer: number = 0;
-  public slideDuration: number = 0.85;
   public laneX: number = 0;
   public targetLaneX: number = 0;
-  public laneChangeSpeed: number = 19;
+  public isGrounded: boolean = true;
+  public jumpY: number = 0;
+  public jumpVelocity: number = 0;
+  public gravity: number = -38.0;
+  public slideTimer: number = 0;
+  public slideDuration: number = 0.85;
   public rollAngle: number = 0;
+
+  // Landing Rebound Physics (ارتداد خفيف عند الهبوط من القفز)
+  public landingReboundTime: number = 0;
+  public readonly landingReboundDuration: number = 0.32; // 320ms spring rebound
   public landingSquash: number = 0;
 
-  // Collision dimensions
-  public hitboxHeight: number = 1.8;
-  public hitboxRadius: number = 0.55;
+  // Natural Procedural Timing
+  private animTime: number = 0;
+  private gaitPhase: number = 0;
+  private blinkTimer: number = 0;
+  private isBlinking: boolean = false;
+  private blinkProgress: number = 0;
+
+  // Hitbox & Physics Bounds
+  public hitboxHeight: number = 1.76;
+  public hitboxRadius: number = 0.36;
 
   constructor() {
     this.group = new THREE.Group();
-    this.group.name = 'Hammoudi';
+    this.group.name = 'Bassam_SubwaySurfers_Rig';
 
-    // 1. High-Fidelity Realistic Materials Setup
-    // Warm, authentic Arab skin tone
+    this.textureManager = new CharacterTextureManager();
+    this.skeletalRig = new DynamicSkeletalRig();
+
+    // 1. Materials with warm, rich stylized palette
     this.skinMat = new THREE.MeshStandardMaterial({
-      color: 0xdf9b6d,
-      roughness: 0.6,
+      color: 0xdfa37a, // Warm Middle-Eastern golden tan skin tone
+      roughness: 0.50,
+      metalness: 0.03,
+    });
+
+    this.faceMat = this.skinMat;
+    this.handsMat = this.skinMat;
+
+    this.eyeIrisMat = new THREE.MeshStandardMaterial({
+      map: HighPrecisionTextureEngine.createIrisTexture(this.appearance.eyeColor.hex),
+      roughness: 0.10,
       metalness: 0.05,
     });
 
-    // Dark espresso textured hair with subtle sheen
-    this.hairMat = new THREE.MeshStandardMaterial({
-      color: 0x14100e,
-      roughness: 0.85,
-      metalness: 0.1,
-    });
-
-    // Light heather grey / off-white athletic running jacket shell
-    this.jacketShellMat = new THREE.MeshStandardMaterial({
-      color: 0xd4d4d8,
-      roughness: 0.55,
-      metalness: 0.08,
-    });
-
-    // Contrast charcoal raglan sleeves
-    this.jacketSleeveMat = new THREE.MeshStandardMaterial({
-      color: 0x27272a,
-      roughness: 0.6,
-      metalness: 0.08,
-    });
-
-    // Crimson red hood interior lining
-    this.hoodInteriorMat = new THREE.MeshStandardMaterial({
-      color: 0x991b1b,
+    this.hoodieMat = new THREE.MeshStandardMaterial({
+      map: this.textureManager.textures.jacketAlbedo,
       roughness: 0.65,
+      metalness: 0.08,
     });
 
-    // Inner athletic crewneck compression shirt
-    this.innerShirtMat = new THREE.MeshStandardMaterial({
-      color: 0x18181b,
-      roughness: 0.7,
-    });
-
-    // Charcoal black athletic running joggers
     this.pantsMat = new THREE.MeshStandardMaterial({
-      color: 0x18181b,
-      roughness: 0.65,
+      map: this.textureManager.textures.joggersAlbedo,
+      roughness: 0.70,
+      metalness: 0.06,
     });
 
-    // Dark red racing side stripes on joggers
-    this.pantsStripesMat = new THREE.MeshStandardMaterial({
-      color: 0xdc2626,
-      roughness: 0.4,
-    });
-
-    // Modern running sneakers materials
-    this.shoeUpperMat = new THREE.MeshStandardMaterial({
-      color: 0x18181b,
+    this.shoeMat = new THREE.MeshStandardMaterial({
+      map: this.textureManager.textures.sneakersAlbedo,
       roughness: 0.45,
+      metalness: 0.12,
     });
 
-    this.shoeMidsoleMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.35,
+    this.shoeSoleMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.32,
+      metalness: 0.05,
     });
 
-    this.shoeOutsoleMat = new THREE.MeshStandardMaterial({
-      color: 0x0f172a,
-      roughness: 0.8,
+    this.hairMat = new THREE.MeshStandardMaterial({
+      color: 0x16100d, // Natural dark espresso-black hair
+      roughness: 0.52,
+      metalness: 0.12,
     });
 
-    this.shoeAirBubbleMat = new THREE.MeshPhysicalMaterial({
-      color: 0xef4444,
-      transparent: true,
-      opacity: 0.7,
-      roughness: 0.1,
-      metalness: 0.1,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.1,
+    this.capMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.60,
+      metalness: 0.10,
     });
 
-    this.shoeAccentMat = new THREE.MeshStandardMaterial({
-      color: 0xef4444,
-      roughness: 0.3,
-    });
-
-    // Compact tactical runner backpack
     this.backpackMat = new THREE.MeshStandardMaterial({
-      color: 0x18181b,
-      roughness: 0.55,
-      metalness: 0.15,
+      map: this.textureManager.textures.backpackAlbedo,
+      roughness: 0.58,
+      metalness: 0.12,
     });
 
-    // Metallic hardware / zips
-    this.zipperMat = new THREE.MeshStandardMaterial({
-      color: 0x383838,
+    this.goldTrimMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      metalness: 0.85,
       roughness: 0.25,
-      metalness: 0.8,
     });
 
-    // Red signature athletic accents
-    this.redAccentMat = new THREE.MeshStandardMaterial({
-      color: 0xef4444,
-      roughness: 0.35,
-    });
-
-    // Glowing smartwatch OLED UI screen
-    this.watchScreenMat = new THREE.MeshBasicMaterial({
-      color: 0x00f5ff,
-    });
-
-    // Build the high-resolution Back Panel Texture with Hammoudi's Arabic Name Badge
-    this.jacketBackMat = this.createBackJacketMaterial();
-
-    // 2. Root & Pelvis/Hips
+    // 2. Build Master Skeletal Structure with Solid Subway Surfers Proportions
     this.rootBone = new THREE.Group();
-    this.rootBone.position.y = 0.95;
+    this.rootBone.name = 'Root_Bone';
     this.group.add(this.rootBone);
 
-    this.hipsGroup = new THREE.Group();
-    this.rootBone.add(this.hipsGroup);
+    // Pelvis (Hips) - Solid, well-defined athletic runner hips
+    this.pelvisBone = new THREE.Group();
+    this.pelvisBone.position.set(0, 0.96, 0);
+    this.rootBone.add(this.pelvisBone);
 
-    // Hips / Pelvis with athletic contour
-    const hipGeo = new THREE.CylinderGeometry(0.24, 0.21, 0.22, 14);
-    this.hips = new THREE.Mesh(hipGeo, this.pantsMat);
-    this.hips.castShadow = true;
-    this.hipsGroup.add(this.hips);
+    const pelvisGeo = new THREE.CylinderGeometry(0.185, 0.160, 0.18, 18);
+    this.pelvisMesh = new THREE.Mesh(pelvisGeo, this.pantsMat);
+    this.pelvisMesh.castShadow = true;
+    this.pelvisMesh.receiveShadow = true;
+    this.pelvisBone.add(this.pelvisMesh);
 
-    // 3. Spine & Athletic Upper Torso
-    this.spineGroup = new THREE.Group();
-    this.spineGroup.position.y = 0.14;
-    this.hipsGroup.add(this.spineGroup);
+    // Ribbed Waistband connecting hoodie and pants
+    const waistbandGeo = new THREE.CylinderGeometry(0.190, 0.186, 0.045, 18);
+    const waistbandMesh = new THREE.Mesh(waistbandGeo, this.hoodieMat);
+    waistbandMesh.position.set(0, 0.08, 0);
+    this.pelvisBone.add(waistbandMesh);
 
-    this.chestGroup = new THREE.Group();
-    this.spineGroup.add(this.chestGroup);
+    // Spine
+    this.spineLowerBone = new THREE.Group();
+    this.spineLowerBone.position.set(0, 0.10, 0);
+    this.pelvisBone.add(this.spineLowerBone);
 
-    // Main Athletic Jacket Chest Body
-    const chestGeo = new THREE.BoxGeometry(0.48, 0.46, 0.28);
-    this.chest = new THREE.Mesh(chestGeo, this.jacketShellMat);
-    this.chest.position.y = 0.23;
-    this.chest.castShadow = true;
-    this.chestGroup.add(this.chest);
+    // Chest & Athletic Torso - Solid, sculpted Techwear Hoodie
+    this.chestBone = new THREE.Group();
+    this.chestBone.position.set(0, 0.17, 0);
+    this.spineLowerBone.add(this.chestBone);
 
-    // Inner Black Crewneck Shirt (visible at collar & zip opening)
-    const innerShirtGeo = new THREE.BoxGeometry(0.26, 0.44, 0.05);
-    this.innerShirt = new THREE.Mesh(innerShirtGeo, this.innerShirtMat);
-    this.innerShirt.position.set(0, 0.23, 0.125);
-    this.chestGroup.add(this.innerShirt);
+    const chestGeo = new THREE.CylinderGeometry(0.235, 0.185, 0.32, 20);
+    this.chestMesh = new THREE.Mesh(chestGeo, this.hoodieMat);
+    this.chestMesh.position.set(0, 0.13, 0);
+    this.chestMesh.castShadow = true;
+    this.chestMesh.receiveShadow = true;
+    this.chestBone.add(this.chestMesh);
 
-    // Front Central Full-Zip
-    const zipGeo = new THREE.BoxGeometry(0.024, 0.44, 0.02);
-    const zipMesh = new THREE.Mesh(zipGeo, this.zipperMat);
-    zipMesh.position.set(0, 0.23, 0.145);
-    this.chestGroup.add(zipMesh);
+    // Sculpted Kangaroo Front Pouch Pocket
+    const pocketGeo = new THREE.BoxGeometry(0.22, 0.13, 0.08);
+    this.kangarooPocket = new THREE.Mesh(pocketGeo, this.hoodieMat);
+    this.kangarooPocket.position.set(0, 0.03, 0.155);
+    this.kangarooPocket.castShadow = true;
+    this.chestBone.add(this.kangarooPocket);
 
-    // Red Chest Logo (Left Chest Stylized Runner Emblem)
-    const chestLogoGeo = new THREE.ConeGeometry(0.035, 0.05, 3);
-    const chestLogo = new THREE.Mesh(chestLogoGeo, this.redAccentMat);
-    chestLogo.position.set(-0.13, 0.31, 0.145);
-    chestLogo.rotation.z = Math.PI;
-    this.chestGroup.add(chestLogo);
+    // Raised Ribbed Hoodie Collar around the neck
+    const collarGeo = new THREE.TorusGeometry(0.105, 0.032, 12, 24);
+    const collarMesh = new THREE.Mesh(collarGeo, this.hoodieMat);
+    collarMesh.rotation.x = Math.PI * 0.5;
+    collarMesh.position.set(0, 0.28, 0);
+    this.chestBone.add(collarMesh);
 
-    // Back Aerodynamic Panel with Gold "حمودي" Name Badge
-    const backBadgeGeo = new THREE.PlaneGeometry(0.42, 0.42);
-    const backBadgeMesh = new THREE.Mesh(backBadgeGeo, this.jacketBackMat);
-    backBadgeMesh.position.set(0, 0.23, -0.142);
-    backBadgeMesh.rotation.y = Math.PI; // Face rear camera
-    this.chestGroup.add(backBadgeMesh);
+    // Draped Hoodie on the upper back
+    const hoodGeo = new THREE.TorusGeometry(0.145, 0.052, 14, 24);
+    this.drapedHood = new THREE.Mesh(hoodGeo, this.hoodieMat);
+    this.drapedHood.rotation.x = Math.PI * 0.42;
+    this.drapedHood.position.set(0, 0.25, -0.055);
+    this.chestBone.add(this.drapedHood);
 
-    // Athletic Folded Hood around the neck with Crimson Red Interior
-    this.hoodieCollar = new THREE.Group();
-    this.hoodieCollar.position.set(0, 0.45, -0.04);
+    // Hoodie Drawstrings with Golden Metallic Aglets
+    const cordGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.19, 8);
+    this.drawstringL = new THREE.Mesh(cordGeo, this.goldTrimMat);
+    this.drawstringL.position.set(-0.055, 0.17, 0.14);
+    this.chestBone.add(this.drawstringL);
 
-    const hoodOuterGeo = new THREE.TorusGeometry(0.18, 0.055, 10, 18, Math.PI * 1.3);
-    const hoodOuter = new THREE.Mesh(hoodOuterGeo, this.jacketShellMat);
-    hoodOuter.rotation.x = Math.PI / 2.8;
-    hoodOuter.rotation.z = Math.PI * 0.85;
+    this.drawstringR = new THREE.Mesh(cordGeo, this.goldTrimMat);
+    this.drawstringR.position.set(0.055, 0.17, 0.14);
+    this.chestBone.add(this.drawstringR);
 
-    const hoodInnerGeo = new THREE.TorusGeometry(0.165, 0.045, 10, 18, Math.PI * 1.3);
-    const hoodInner = new THREE.Mesh(hoodInnerGeo, this.hoodInteriorMat);
-    hoodInner.rotation.x = Math.PI / 2.8;
-    hoodInner.rotation.z = Math.PI * 0.85;
-    hoodInner.position.y = 0.01;
+    // Aglet tips
+    const agletGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.025, 8);
+    const agletL = new THREE.Mesh(agletGeo, this.goldTrimMat);
+    agletL.position.set(0, -0.095, 0);
+    this.drawstringL.add(agletL);
 
-    this.hoodieCollar.add(hoodOuter, hoodInner);
-    this.chestGroup.add(this.hoodieCollar);
+    const agletR = new THREE.Mesh(agletGeo, this.goldTrimMat);
+    agletR.position.set(0, -0.095, 0);
+    this.drawstringR.add(agletR);
 
-    // Ultra-Compact Tactical Sports Backpack
+    // Urban Runner Backpack
     this.backpackGroup = this.createBackpack();
-    this.chestGroup.add(this.backpackGroup);
-
-    // 4. Neck & Sculpted Arabic Head
-    this.headGroup = new THREE.Group();
-    this.headGroup.position.y = 0.5;
-    this.spineGroup.add(this.headGroup);
+    this.chestBone.add(this.backpackGroup);
 
     // Neck
-    const neckGeo = new THREE.CylinderGeometry(0.095, 0.115, 0.13, 12);
-    const neck = new THREE.Mesh(neckGeo, this.skinMat);
-    neck.position.y = 0.055;
-    this.headGroup.add(neck);
+    this.neckBone = new THREE.Group();
+    this.neckBone.position.set(0, 0.29, 0);
+    this.chestBone.add(this.neckBone);
 
-    // Anatomical Head
-    const headGeo = new THREE.SphereGeometry(0.195, 18, 18);
-    headGeo.scale(0.94, 1.14, 1.04);
-    this.head = new THREE.Mesh(headGeo, this.skinMat);
-    this.head.position.y = 0.24;
-    this.head.castShadow = true;
-    this.headGroup.add(this.head);
+    const neckGeo = new THREE.CylinderGeometry(0.068, 0.078, 0.12, 16);
+    const neckMesh = new THREE.Mesh(neckGeo, this.skinMat);
+    neckMesh.position.set(0, 0.06, -0.004);
+    neckMesh.castShadow = true;
+    this.neckBone.add(neckMesh);
 
-    // Jawline & Chin Contour
-    const jawGeo = new THREE.BoxGeometry(0.16, 0.1, 0.14);
-    const jaw = new THREE.Mesh(jawGeo, this.skinMat);
-    jaw.position.set(0, 0.15, 0.08);
-    jaw.rotation.x = -0.15;
-    this.headGroup.add(jaw);
+    // Head Bone
+    this.headBone = new THREE.Group();
+    this.headBone.position.set(0, 0.11, 0);
+    this.neckBone.add(this.headBone);
 
-    // Modern Textured Wavy Quiff Hairstyle & Fade
-    this.hairGroup = this.createModernArabHairstyle();
-    this.headGroup.add(this.hairGroup);
+    // 1. Sculpted Handsome Stylized Head Geometry (Clean jawline, cheek contour & chin)
+    const headGeo = new THREE.SphereGeometry(0.128, 28, 28);
+    headGeo.scale(0.97, 1.12, 1.04);
+    this.headMesh = new THREE.Mesh(headGeo, this.skinMat);
+    this.headMesh.position.set(0, 0.12, -0.005);
+    this.headMesh.castShadow = true;
+    this.headBone.add(this.headMesh);
 
-    // Realistic Facial Features (Eyes, Eyebrows, Nose, Lips, Beard Stubble)
-    this.faceGroup = this.createFacialFeatures();
-    this.headGroup.add(this.faceGroup);
+    // Sculpted Athletic Chin & Jaw
+    const chinGeo = new THREE.SphereGeometry(0.044, 18, 18);
+    chinGeo.scale(0.90, 0.72, 1.0);
+    const chinMesh = new THREE.Mesh(chinGeo, this.skinMat);
+    chinMesh.position.set(0, 0.018, 0.058);
+    this.headBone.add(chinMesh);
 
-    // 5. Athletic Arms & Smartwatch with Joint Articulation
-    const leftArmComponents = this.createArticulatedArm(-1);
-    this.leftShoulder = leftArmComponents.shoulder;
-    this.leftArm = leftArmComponents.arm;
-    this.leftForearm = leftArmComponents.forearm;
-    this.leftHand = leftArmComponents.hand;
-    this.chestGroup.add(this.leftShoulder);
+    // 2. Sculpted Stylized Ears
+    this.earL = this.createStylizedEar(-1);
+    this.earR = this.createStylizedEar(1);
+    this.headBone.add(this.earL, this.earR);
 
-    const rightArmComponents = this.createArticulatedArm(1);
-    this.rightShoulder = rightArmComponents.shoulder;
-    this.rightArm = rightArmComponents.arm;
-    this.rightForearm = rightArmComponents.forearm;
-    this.rightHand = rightArmComponents.hand;
-    this.chestGroup.add(this.rightShoulder);
+    // 3. Modern Streetwear Haircut & Optional Subway Cap
+    const { hairGroup, hairFringe, runnerCapGroup } = this.createModernStreetHair();
+    this.hairGroup = hairGroup;
+    this.hairFringe = hairFringe;
+    this.runnerCapGroup = runnerCapGroup;
+    this.headBone.add(this.hairGroup);
 
-    // 6. Running Legs & 3D Sculpted Sneakers with Joint Articulation
-    const leftLegComponents = this.createArticulatedLeg(-1);
-    this.leftHipJoint = leftLegComponents.hipJoint;
-    this.leftLeg = leftLegComponents.thigh;
-    this.leftKneeJoint = leftLegComponents.kneeJoint;
-    this.leftShinGroup = leftLegComponents.shin;
-    this.leftAnkleJoint = leftLegComponents.ankleJoint;
-    this.leftShoeGroup = leftLegComponents.shoe;
-    this.hipsGroup.add(this.leftHipJoint);
+    // 4. Expressive Stylized Facial Rig (Eyes, Nose, Mouth, Teeth)
+    this.facialRig = this.createStylizedFacialRig();
+    this.headBone.add(this.facialRig.faceGroup);
+    this.lipsMesh = this.facialRig.lipsMesh;
 
-    const rightLegComponents = this.createArticulatedLeg(1);
-    this.rightHipJoint = rightLegComponents.hipJoint;
-    this.rightLeg = rightLegComponents.thigh;
-    this.rightKneeJoint = rightLegComponents.kneeJoint;
-    this.rightShinGroup = rightLegComponents.shin;
-    this.rightAnkleJoint = rightLegComponents.ankleJoint;
-    this.rightShoeGroup = rightLegComponents.shoe;
-    this.hipsGroup.add(this.rightHipJoint);
+    // Upper Limbs - Solid Athletic Sleeves & Anatomical Hands
+    this.clavicleLeftBone = new THREE.Group();
+    this.clavicleLeftBone.position.set(-0.16, 0.25, 0);
+    this.chestBone.add(this.clavicleLeftBone);
 
-    // 7. Shield FX Mesh (Hexagonal Forcefield)
-    const shieldGeo = new THREE.IcosahedronGeometry(1.25, 2);
-    const shieldMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.4,
-      wireframe: true,
-      blending: THREE.AdditiveBlending,
+    this.clavicleRightBone = new THREE.Group();
+    this.clavicleRightBone.position.set(0.16, 0.25, 0);
+    this.chestBone.add(this.clavicleRightBone);
+
+    const leftArmComponents = this.createArmChain(-1);
+    this.shoulderLeftBone = leftArmComponents.shoulderBone;
+    this.bicepLeftMesh = leftArmComponents.bicepMesh;
+    this.elbowLeftBone = leftArmComponents.elbowBone;
+    this.forearmLeftMesh = leftArmComponents.forearmMesh;
+    this.wristLeftBone = leftArmComponents.wristBone;
+    this.handLeftRig = leftArmComponents.handRig;
+    this.biometricWatch = leftArmComponents.watchGroup;
+    this.clavicleLeftBone.add(this.shoulderLeftBone);
+
+    const rightArmComponents = this.createArmChain(1);
+    this.shoulderRightBone = rightArmComponents.shoulderBone;
+    this.bicepRightMesh = rightArmComponents.bicepMesh;
+    this.elbowRightBone = rightArmComponents.elbowBone;
+    this.forearmRightMesh = rightArmComponents.forearmMesh;
+    this.wristRightBone = rightArmComponents.wristBone;
+    this.handRightRig = rightArmComponents.handRig;
+    this.clavicleRightBone.add(this.shoulderRightBone);
+
+    // Lower Limbs - Athletic Joggers & Chunky Subway Sneakers
+    const leftLegComponents = this.createLegChain(-1);
+    this.hipLeftBone = leftLegComponents.hipBone;
+    this.thighLeftMesh = leftLegComponents.thighMesh;
+    this.kneeLeftBone = leftLegComponents.kneeBone;
+    this.shinLeftBone = leftLegComponents.shinBone;
+    this.ankleLeftBone = leftLegComponents.ankleBone;
+    this.shoeLeftGroup = leftLegComponents.shoeGroup;
+    this.pelvisBone.add(this.hipLeftBone);
+
+    const rightLegComponents = this.createLegChain(1);
+    this.hipRightBone = rightLegComponents.hipBone;
+    this.thighRightMesh = rightLegComponents.thighMesh;
+    this.kneeRightBone = rightLegComponents.kneeBone;
+    this.shinRightBone = rightLegComponents.shinBone;
+    this.ankleRightBone = rightLegComponents.ankleBone;
+    this.shoeRightGroup = rightLegComponents.shoeGroup;
+    this.pelvisBone.add(this.hipRightBone);
+
+    // Arabic Thobe Skirt (Hidden by default)
+    const thobeGeo = new THREE.CylinderGeometry(0.18, 0.36, 0.92, 18, 1, true);
+    const thobeMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.85,
+      side: THREE.DoubleSide,
     });
-    this.shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
-    this.shieldMesh.position.set(0, 0.4, 0);
-    this.shieldMesh.visible = false;
+    this.thobeSkirt = new THREE.Mesh(thobeGeo, thobeMat);
+    this.thobeSkirt.position.set(0, -0.45, 0);
+    this.thobeSkirt.visible = false;
+    this.pelvisBone.add(this.thobeSkirt);
+
+    // Backward compatibility aliases
+    this.leftShoulder = this.clavicleLeftBone;
+    this.rightShoulder = this.clavicleRightBone;
+    this.leftArm = this.shoulderLeftBone;
+    this.rightArm = this.shoulderRightBone;
+    this.leftForearm = this.elbowLeftBone;
+    this.rightForearm = this.elbowRightBone;
+    this.leftHand = this.wristLeftBone;
+    this.rightHand = this.wristRightBone;
+    this.leftFingers = this.handLeftRig.index.mcp;
+    this.rightFingers = this.handRightRig.index.mcp;
+    this.leftThumb = this.handLeftRig.thumb.cmc;
+    this.rightThumb = this.handRightRig.thumb.cmc;
+
+    this.pelvisGroup = this.pelvisBone;
+    this.spineGroup = this.spineLowerBone;
+    this.chestGroup = this.chestBone;
+    this.neckGroup = this.neckBone;
+    this.headGroup = this.headBone;
+    this.faceGroup = this.facialRig.faceGroup;
+
+    this.leftHipJoint = this.hipLeftBone;
+    this.rightHipJoint = this.hipRightBone;
+    this.leftLeg = this.hipLeftBone;
+    this.rightLeg = this.hipRightBone;
+    this.leftKneeJoint = this.kneeLeftBone;
+    this.rightKneeJoint = this.kneeRightBone;
+    this.leftShinGroup = this.shinLeftBone;
+    this.rightShinGroup = this.shinRightBone;
+    this.leftAnkleJoint = this.ankleLeftBone;
+    this.rightAnkleJoint = this.ankleRightBone;
+    this.leftShoeGroup = this.shoeLeftGroup;
+    this.rightShoeGroup = this.shoeRightGroup;
+
+    this.thighLeftBone = this.hipLeftBone;
+    this.thighRightBone = this.hipRightBone;
+
+    // Power-Up Indicators
+    this.shieldMesh = this.createShieldMesh();
     this.rootBone.add(this.shieldMesh);
 
-    // 8. Magnet Orbital Aura
-    this.magnetAura = new THREE.Group();
-    const ringGeo = new THREE.TorusGeometry(0.9, 0.04, 8, 24);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xfbbf24,
-      transparent: true,
-      opacity: 0.7,
-      blending: THREE.AdditiveBlending,
-    });
-    const ring1 = new THREE.Mesh(ringGeo, ringMat);
-    const ring2 = new THREE.Mesh(ringGeo, ringMat);
-    ring2.rotation.x = Math.PI / 2;
-    this.magnetAura.add(ring1, ring2);
-    this.magnetAura.position.set(0, 0.3, 0);
-    this.magnetAura.visible = false;
+    this.magnetAura = this.createMagnetAura();
     this.rootBone.add(this.magnetAura);
 
-    // 9. Turbo Thruster Jetpack
-    this.turboJetMesh = new THREE.Group();
-    const jetBodyGeo = new THREE.BoxGeometry(0.3, 0.35, 0.12);
-    const jetBody = new THREE.Mesh(jetBodyGeo, new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 }));
-    const thrusterGeo = new THREE.ConeGeometry(0.06, 0.22, 10);
-    const thrusterMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
-    const thrusterL = new THREE.Mesh(thrusterGeo, thrusterMat);
-    thrusterL.position.set(-0.1, -0.22, 0);
-    thrusterL.rotation.x = Math.PI;
-    const thrusterR = new THREE.Mesh(thrusterGeo, thrusterMat);
-    thrusterR.position.set(0.1, -0.22, 0);
-    thrusterR.rotation.x = Math.PI;
-    this.turboJetMesh.add(jetBody, thrusterL, thrusterR);
-    this.turboJetMesh.position.set(0, 0.22, -0.22);
-    this.turboJetMesh.visible = false;
-    this.spineGroup.add(this.turboJetMesh);
+    this.turboJetMesh = this.createTurboJetMesh();
+    this.rootBone.add(this.turboJetMesh);
 
-    // 10. Running Particle Trail
+    // Dust Particles (Footsteps & Landing Rebounds)
+    const particleCount = 50;
     const pGeo = new THREE.BufferGeometry();
-    this.trailPositions = new Float32Array(this.trailCount * 3);
-    this.trailColors = new Float32Array(this.trailCount * 3);
-    for (let i = 0; i < this.trailCount * 3; i++) {
-      this.trailPositions[i] = 0;
-      this.trailColors[i] = 1.0;
-    }
-    pGeo.setAttribute('position', new THREE.BufferAttribute(this.trailPositions, 3));
-    pGeo.setAttribute('color', new THREE.BufferAttribute(this.trailColors, 3));
+    this.footstepPositions = new Float32Array(particleCount * 3);
+    this.footstepLife = new Float32Array(particleCount);
+    this.footstepVel = new Float32Array(particleCount * 3);
 
+    for (let i = 0; i < particleCount; i++) {
+      this.footstepLife[i] = 0;
+      this.footstepPositions[i * 3 + 1] = -100;
+    }
+
+    pGeo.setAttribute('position', new THREE.BufferAttribute(this.footstepPositions, 3));
     const pMat = new THREE.PointsMaterial({
-      color: 0xfbbf24,
-      size: 0.22,
+      color: 0xd4a373,
+      size: 0.16,
       transparent: true,
-      opacity: 0.85,
-      blending: THREE.AdditiveBlending,
-      vertexColors: true,
+      opacity: 0.65,
+      depthWrite: false,
     });
-    this.trailParticles = new THREE.Points(pGeo, pMat);
-    this.group.add(this.trailParticles);
+    this.footstepDustParticles = new THREE.Points(pGeo, pMat);
+    this.group.add(this.footstepDustParticles);
+
+    this.initializeCharacter();
   }
 
   /**
-   * High-Resolution Canvas Texture for Back of Jacket & Backpack (Bassam - بسام) with Iraqi Heritage Trims
+   * Anatomical Stylized Ear
    */
-  private createBackJacketMaterial(): THREE.MeshStandardMaterial {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
+  private createStylizedEar(side: number): THREE.Group {
+    const ear = new THREE.Group();
+    ear.position.set(side * 0.124, 0.118, -0.012);
+    ear.rotation.y = side * 0.20; // 12-degree natural angle
 
-    if (ctx) {
-      // Sleek athletic dark carbon/heather base with Iraqi heritage embroidery
-      ctx.fillStyle = '#18181b';
-      ctx.fillRect(0, 0, 512, 512);
+    // Outer Helix rim
+    const earGeo = new THREE.TorusGeometry(0.024, 0.006, 8, 16, Math.PI * 1.35);
+    const earMesh = new THREE.Mesh(earGeo, this.skinMat);
+    earMesh.rotation.z = side * 0.20;
+    ear.add(earMesh);
 
-      // Arabesque ornamental border trim
-      ctx.strokeStyle = '#d97706';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(16, 16, 480, 480);
+    // Inner Antihelix ridge & fossa
+    const innerGeo = new THREE.TorusGeometry(0.014, 0.004, 6, 12, Math.PI * 1.1);
+    const innerMesh = new THREE.Mesh(innerGeo, this.skinMat);
+    innerMesh.position.set(side * -0.004, 0.002, 0.002);
+    innerMesh.rotation.z = side * 0.25;
+    ear.add(innerMesh);
 
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(26, 26, 460, 460);
+    // Tragus
+    const tragusGeo = new THREE.SphereGeometry(0.006, 8, 8);
+    tragusGeo.scale(0.8, 1.2, 0.8);
+    const tragusMesh = new THREE.Mesh(tragusGeo, this.skinMat);
+    tragusMesh.position.set(side * 0.006, -0.004, 0.007);
+    ear.add(tragusMesh);
 
-      // Central Aerodynamic Racing & Sayah Trim Spine
-      ctx.fillStyle = '#090d16';
-      ctx.beginPath();
-      ctx.moveTo(150, 0);
-      ctx.lineTo(362, 0);
-      ctx.lineTo(330, 512);
-      ctx.lineTo(182, 512);
-      ctx.closePath();
-      ctx.fill();
+    // Soft rounded Lobule
+    const lobeGeo = new THREE.SphereGeometry(0.009, 8, 8);
+    lobeGeo.scale(0.85, 1.2, 0.75);
+    const lobeMesh = new THREE.Mesh(lobeGeo, this.skinMat);
+    lobeMesh.position.set(0, -0.020, 0);
+    ear.add(lobeMesh);
 
-      // Golden Iraqi embroidery lines along Sayah vest
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(148, 0);
-      ctx.lineTo(180, 512);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(364, 0);
-      ctx.lineTo(332, 512);
-      ctx.stroke();
-
-      // Iraqi Flag Accent ribbon on upper back
-      const flagY = 48;
-      ctx.fillStyle = '#dc2626'; // Red
-      ctx.fillRect(206, flagY, 100, 12);
-      ctx.fillStyle = '#ffffff'; // White
-      ctx.fillRect(206, flagY + 12, 100, 12);
-      ctx.fillStyle = '#18181b'; // Black
-      ctx.fillRect(206, flagY + 24, 100, 12);
-
-      // Green Takbir badge in center of flag
-      ctx.fillStyle = '#15803d';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('الله ★ اكبر', 256, flagY + 22);
-
-      // Golden Chevron Speed Wings
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(190, 115);
-      ctx.lineTo(256, 145);
-      ctx.lineTo(322, 115);
-      ctx.stroke();
-
-      // Premium Golden Plaque Badge for "بسام" (Bassam)
-      ctx.fillStyle = '#020617';
-      ctx.beginPath();
-      ctx.roundRect(160, 160, 192, 230, 24);
-      ctx.fill();
-
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 5;
-      ctx.stroke();
-
-      // Inner glow border
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(168, 168, 176, 214);
-
-      // Top Tag: عداء بغداد
-      ctx.fillStyle = '#fbbf24';
-      ctx.font = 'bold 20px "Cairo", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('بسام • عداء بغداد', 256, 202);
-
-      // Name Calligraphy: بسام (Bassam) - Realistic Athletic Iraqi Hero
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 68px "Cairo", sans-serif';
-      ctx.shadowColor = '#f59e0b';
-      ctx.shadowBlur = 18;
-      ctx.fillText('بسام', 256, 276);
-      ctx.shadowBlur = 0;
-
-      // Developer credit: بلال النعيمي
-      ctx.fillStyle = '#fef08a';
-      ctx.font = 'bold 17px "Cairo", sans-serif';
-      ctx.fillText('تصميم وتطوير: بلال النعيمي', 256, 316);
-
-      // Version & Made in Iraq
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 16px "Cairo", sans-serif';
-      ctx.fillText('الإصدار 1.3 • صنع في العراق 🇮🇶', 256, 348);
-
-      // Edition: 2026
-      ctx.fillStyle = '#cbd5e1';
-      ctx.font = 'bold 15px monospace';
-      ctx.fillText('★ 2026 ★', 256, 376);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.anisotropy = 8;
-
-    return new THREE.MeshStandardMaterial({
-      map: texture,
-      roughness: 0.4,
-      metalness: 0.25,
-    });
+    return ear;
   }
 
   /**
-   * Realistic Modern Iraqi Taper Fade Hairstyle (Textured Crop / Quiff)
+   * Modern Streetwear Urban Haircut with Dynamic Fringe & Optional Runner Cap
    */
-  private createModernArabHairstyle(): THREE.Group {
-    const hair = new THREE.Group();
+  private createModernStreetHair(): {
+    hairGroup: THREE.Group;
+    hairFringe: THREE.Group;
+    runnerCapGroup: THREE.Group;
+  } {
+    const hairGroup = new THREE.Group();
+    hairGroup.position.set(0, 0.13, -0.01);
 
-    // 1. Skull Base & Mid-Fade Underlayer
-    const fadeBaseGeo = new THREE.SphereGeometry(0.21, 20, 20);
-    fadeBaseGeo.scale(0.96, 0.98, 1.12);
-    const fadeBase = new THREE.Mesh(fadeBaseGeo, this.hairMat);
-    fadeBase.position.set(0, 0.29, -0.01);
-    hair.add(fadeBase);
+    // Main Scalp Base with Clean Tapered Fade
+    const scalpGeo = new THREE.SphereGeometry(0.134, 22, 22, 0, Math.PI * 2, 0, Math.PI * 0.64);
+    scalpGeo.scale(0.98, 1.05, 1.08);
+    const scalpMesh = new THREE.Mesh(scalpGeo, this.hairMat);
+    scalpMesh.position.set(0, 0.026, 0);
+    hairGroup.add(scalpMesh);
 
-    // 2. Voluminous Textured Top (Athletic Crop / Modern Pompadour Quiff)
-    const topGeo = new THREE.SphereGeometry(0.215, 18, 18);
-    topGeo.scale(0.92, 0.65, 1.05);
-    const topHair = new THREE.Mesh(topGeo, this.hairMat);
-    topHair.position.set(0, 0.38, 0.03);
-    topHair.rotation.x = -0.12;
-    topHair.castShadow = true;
-    hair.add(topHair);
+    // Volumetric Sculpted Crown Locks (Modern textured fade top)
+    const crownGeo = new THREE.SphereGeometry(0.128, 18, 18);
+    crownGeo.scale(0.96, 0.78, 1.12);
+    const crownMesh = new THREE.Mesh(crownGeo, this.hairMat);
+    crownMesh.position.set(0, 0.095, 0.015);
+    crownMesh.castShadow = true;
+    hairGroup.add(crownMesh);
 
-    // 3. Natural Textured Locks on Crown and Forehead
-    const lockMat = this.hairMat;
-    const lockGeo = new THREE.BoxGeometry(0.06, 0.04, 0.12);
-    const lockConfigs = [
-      { x: 0.0, y: 0.41, z: 0.08, rx: -0.25, ry: 0.0, rz: 0.0 },
-      { x: -0.07, y: 0.40, z: 0.07, rx: -0.22, ry: -0.15, rz: 0.12 },
-      { x: 0.07, y: 0.40, z: 0.07, rx: -0.22, ry: 0.15, rz: -0.12 },
-      { x: -0.05, y: 0.41, z: -0.02, rx: -0.1, ry: -0.1, rz: 0.08 },
-      { x: 0.05, y: 0.41, z: -0.02, rx: -0.1, ry: 0.1, rz: -0.08 },
-      { x: 0.0, y: 0.40, z: -0.08, rx: 0.1, ry: 0.0, rz: 0.0 },
+    // Dynamic Swept Hair Locks across the crown
+    const lockDefs = [
+      { x: -0.045, y: 0.12, z: 0.06, scale: 0.038, rotZ: 0.25 },
+      { x: -0.015, y: 0.13, z: 0.07, scale: 0.042, rotZ: 0.10 },
+      { x: 0.020, y: 0.13, z: 0.06, scale: 0.040, rotZ: -0.15 },
+      { x: 0.050, y: 0.11, z: 0.05, scale: 0.035, rotZ: -0.30 },
     ];
 
-    lockConfigs.forEach((c) => {
-      const lock = new THREE.Mesh(lockGeo, lockMat);
-      lock.position.set(c.x, c.y, c.z);
-      lock.rotation.set(c.rx, c.ry, c.rz);
-      hair.add(lock);
+    lockDefs.forEach((ld) => {
+      const lockGeo = new THREE.ConeGeometry(ld.scale, ld.scale * 2.2, 8);
+      lockGeo.rotateX(Math.PI * 0.35);
+      lockGeo.rotateZ(ld.rotZ);
+      const lock = new THREE.Mesh(lockGeo, this.hairMat);
+      lock.position.set(ld.x, ld.y, ld.z);
+      hairGroup.add(lock);
     });
 
-    // 4. Clean Tapered Temple Sideburns
-    const sideburnGeo = new THREE.BoxGeometry(0.025, 0.13, 0.06);
-    const sideL = new THREE.Mesh(sideburnGeo, this.hairMat);
-    sideL.position.set(-0.182, 0.22, 0.06);
-    sideL.rotation.z = -0.1;
+    // Sideburns framing the jaw
+    const createSideburn = (side: number) => {
+      const sbGeo = new THREE.ConeGeometry(0.016, 0.075, 6);
+      sbGeo.rotateZ(side * -0.25);
+      const sbMesh = new THREE.Mesh(sbGeo, this.hairMat);
+      sbMesh.position.set(side * 0.115, -0.015, 0.048);
+      sbMesh.rotation.x = 0.20;
+      return sbMesh;
+    };
+    hairGroup.add(createSideburn(-1), createSideburn(1));
 
-    const sideR = new THREE.Mesh(sideburnGeo, this.hairMat);
-    sideR.position.set(0.182, 0.22, 0.06);
-    sideR.rotation.z = 0.1;
-    hair.add(sideL, sideR);
+    // Dynamic Front Fringe (Sways with wind & running strides)
+    const hairFringe = new THREE.Group();
+    hairFringe.position.set(0, 0.090, 0.115);
 
-    // 5. Clean Tapered Nape (Back of Neck Fade)
-    const napeGeo = new THREE.BoxGeometry(0.20, 0.11, 0.06);
-    const nape = new THREE.Mesh(napeGeo, this.hairMat);
-    nape.position.set(0, 0.19, -0.16);
-    nape.rotation.x = -0.3;
-    hair.add(nape);
+    const fringeStrands = [
+      { x: -0.052, len: 0.070, angle: 0.20, z: 0.002 },
+      { x: -0.028, len: 0.084, angle: 0.09, z: 0.010 },
+      { x: -0.005, len: 0.092, angle: -0.05, z: 0.015 },
+      { x: 0.020, len: 0.086, angle: -0.14, z: 0.012 },
+      { x: 0.045, len: 0.072, angle: -0.24, z: 0.004 },
+    ];
 
-    return hair;
+    fringeStrands.forEach((cfg) => {
+      const strandGroup = new THREE.Group();
+      strandGroup.position.set(cfg.x, 0, cfg.z);
+
+      const sGeo = new THREE.ConeGeometry(0.017, cfg.len, 8);
+      sGeo.rotateX(Math.PI * 0.52);
+      sGeo.rotateZ(cfg.angle);
+      const sMesh = new THREE.Mesh(sGeo, this.hairMat);
+      sMesh.position.set(0, -cfg.len * 0.25, 0.012);
+      strandGroup.add(sMesh);
+
+      hairFringe.add(strandGroup);
+    });
+    hairGroup.add(hairFringe);
+
+    // Subway Surfers Iconic Runner Snapback Cap (Tilted backwards)
+    const runnerCapGroup = new THREE.Group();
+    runnerCapGroup.position.set(0, 0.06, 0);
+
+    const capDomeGeo = new THREE.SphereGeometry(0.138, 18, 18, 0, Math.PI * 2, 0, Math.PI * 0.52);
+    capDomeGeo.scale(0.98, 1.02, 1.05);
+    const capDome = new THREE.Mesh(capDomeGeo, this.capMat);
+    capDome.castShadow = true;
+    runnerCapGroup.add(capDome);
+
+    // Flat/Curved Visor pointing backward (Signature Jake/Subway Surfers look)
+    const visorGeo = new THREE.BoxGeometry(0.16, 0.014, 0.11);
+    const visor = new THREE.Mesh(visorGeo, this.capMat);
+    visor.position.set(0, 0.02, -0.14);
+    visor.rotation.x = -0.18;
+    visor.castShadow = true;
+    runnerCapGroup.add(visor);
+
+    // Snapback sizing strap on back
+    const strapGeo = new THREE.CylinderGeometry(0.135, 0.135, 0.022, 16, 1, true, -Math.PI * 0.35, Math.PI * 0.7);
+    const strap = new THREE.Mesh(strapGeo, this.goldTrimMat);
+    strap.position.set(0, -0.01, 0.02);
+    runnerCapGroup.add(strap);
+
+    // Start with cap enabled for authentic Subway Surfers flavor
+    runnerCapGroup.visible = true;
+    hairGroup.add(runnerCapGroup);
+
+    return { hairGroup, hairFringe, runnerCapGroup };
   }
 
   /**
-   * Sculpted Realistic Face with Human Proportions
-   * (Detailed Anatomical Eyes, Hazel Iris, Upper/Lower Eyelids, Refined Nose, Athletic Jaw & Ears)
+   * Expressive Stylized Facial Rig (Eyes, Eyelids, Eyelashes, Eyebrows, Nose, Mouth, Teeth)
    */
-  private createFacialFeatures(): THREE.Group {
-    const face = new THREE.Group();
+  private createStylizedFacialRig(): FacialRig {
+    const faceGroup = new THREE.Group();
+    faceGroup.position.set(0, 0.114, 0.108);
 
-    // 1. Realistic Eyes
-    const eyeWhiteMat = new THREE.MeshStandardMaterial({
-      color: 0xf4f4f5,
-      roughness: 0.2,
+    // =========================================================================
+    // 1. EXPRESSIVE STYLIZED EYES
+    // =========================================================================
+    const leftEyeGroup = new THREE.Group();
+    leftEyeGroup.position.set(-0.044, 0.034, 0);
+    faceGroup.add(leftEyeGroup);
+
+    const rightEyeGroup = new THREE.Group();
+    rightEyeGroup.position.set(0.044, 0.034, 0);
+    faceGroup.add(rightEyeGroup);
+
+    // Sclera with soft ambient shading
+    const scleraGeo = new THREE.SphereGeometry(0.025, 18, 18);
+    scleraGeo.scale(1.02, 0.95, 0.94);
+    const scleraMat = new THREE.MeshStandardMaterial({
+      color: 0xfcfcfc,
+      roughness: 0.12,
+      metalness: 0.02,
     });
-    const irisMat = new THREE.MeshStandardMaterial({
-      color: 0x542b0c, // Deep warm Baghdad hazel-brown iris
-      roughness: 0.15,
+
+    const eyeL = new THREE.Mesh(scleraGeo, scleraMat);
+    const eyeR = new THREE.Mesh(scleraGeo, scleraMat);
+    leftEyeGroup.add(eyeL);
+    rightEyeGroup.add(eyeR);
+
+    // Vibrant High-Res Irises
+    const irisGeo = new THREE.CircleGeometry(0.016, 24);
+    const irisL = new THREE.Mesh(irisGeo, this.eyeIrisMat);
+    irisL.position.set(0, 0, 0.023);
+    leftEyeGroup.add(irisL);
+
+    const irisR = new THREE.Mesh(irisGeo, this.eyeIrisMat);
+    irisR.position.set(0, 0, 0.023);
+    rightEyeGroup.add(irisR);
+
+    // Smooth Eyelids for natural organic blinking
+    const lidGeo = new THREE.SphereGeometry(0.026, 16, 14, 0, Math.PI * 2, 0, Math.PI * 0.50);
+    const leftUpperLid = new THREE.Mesh(lidGeo, this.skinMat);
+    leftUpperLid.rotation.x = -Math.PI * 0.5;
+    leftEyeGroup.add(leftUpperLid);
+
+    const rightUpperLid = new THREE.Mesh(lidGeo, this.skinMat);
+    rightUpperLid.rotation.x = -Math.PI * 0.5;
+    rightEyeGroup.add(rightUpperLid);
+
+    // Upper Eyelash / Eyeliner Wing
+    const lashMat = new THREE.MeshBasicMaterial({ color: 0x140e0a });
+    const lashGeo = new THREE.TorusGeometry(0.025, 0.0030, 6, 20, Math.PI * 0.90);
+
+    const leftEyelash = new THREE.Mesh(lashGeo, lashMat);
+    leftEyelash.rotation.x = Math.PI * 0.5;
+    leftEyelash.rotation.z = -0.15;
+    leftUpperLid.add(leftEyelash);
+
+    const rightEyelash = new THREE.Mesh(lashGeo, lashMat);
+    rightEyelash.rotation.x = Math.PI * 0.5;
+    rightEyelash.rotation.z = -0.15;
+    rightUpperLid.add(rightEyelash);
+
+    // Stylized Eyebrows (Heroic, confident arch)
+    const leftEyebrowBone = new THREE.Group();
+    leftEyebrowBone.position.set(-0.044, 0.062, 0.020);
+    faceGroup.add(leftEyebrowBone);
+
+    const rightEyebrowBone = new THREE.Group();
+    rightEyebrowBone.position.set(0.044, 0.062, 0.020);
+    faceGroup.add(rightEyebrowBone);
+
+    const browGeo = new THREE.BoxGeometry(0.045, 0.008, 0.012);
+    const browMeshL = new THREE.Mesh(browGeo, this.hairMat);
+    browMeshL.rotation.z = -0.14;
+    leftEyebrowBone.add(browMeshL);
+
+    const browMeshR = new THREE.Mesh(browGeo, this.hairMat);
+    browMeshR.rotation.z = 0.14;
+    rightEyebrowBone.add(browMeshR);
+
+    // =========================================================================
+    // 2. REFINED STYLIZED NOSE
+    // =========================================================================
+    const noseGroup = new THREE.Group();
+    noseGroup.position.set(0, 0.010, 0.030);
+    faceGroup.add(noseGroup);
+
+    // Sculpted nasal bridge
+    const bridgeGeo = new THREE.CylinderGeometry(0.006, 0.009, 0.036, 10);
+    bridgeGeo.rotateX(Math.PI * 0.18);
+    const bridgeMesh = new THREE.Mesh(bridgeGeo, this.skinMat);
+    bridgeMesh.position.set(0, 0.009, 0.004);
+    noseGroup.add(bridgeMesh);
+
+    // Defined rounded nose tip catching soft light
+    const tipGeo = new THREE.SphereGeometry(0.0085, 14, 14);
+    tipGeo.scale(0.90, 0.95, 1.15);
+    const tipMesh = new THREE.Mesh(tipGeo, this.skinMat);
+    tipMesh.position.set(0, -0.006, 0.014);
+    noseGroup.add(tipMesh);
+
+    // Subtle ambient shadow under nose
+    const shadowMat = new THREE.MeshBasicMaterial({
+      color: 0x8a4e2e,
+      transparent: true,
+      opacity: 0.30,
     });
-    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x09090b });
-    const corneaGlossMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const shadowGeo = new THREE.PlaneGeometry(0.014, 0.005);
+    const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+    shadowMesh.position.set(0, -0.013, 0.008);
+    shadowMesh.rotation.x = -Math.PI * 0.35;
+    noseGroup.add(shadowMesh);
 
-    const createRealisticEye = (side: number) => {
-      const eyeGroup = new THREE.Group();
+    // =========================================================================
+    // 3. CHARISMATIC RUNNER SMILE & TEETH
+    // =========================================================================
+    const mouthGroup = new THREE.Group();
+    mouthGroup.position.set(0, -0.030, 0.028);
+    faceGroup.add(mouthGroup);
 
-      // Eyeball / Sclera
-      const scleraGeo = new THREE.SphereGeometry(0.038, 14, 14);
-      scleraGeo.scale(1.15, 0.95, 0.75);
-      const sclera = new THREE.Mesh(scleraGeo, eyeWhiteMat);
+    // Sculpted upper lip curve (Cupid's bow)
+    const lipGeo = new THREE.TorusGeometry(0.022, 0.0040, 8, 18, Math.PI * 0.82);
+    const lipMat = new THREE.MeshStandardMaterial({
+      color: 0xc46955,
+      roughness: 0.40,
+    });
+    const lipsMesh = new THREE.Mesh(lipGeo, lipMat);
+    lipsMesh.rotation.x = Math.PI * 0.38;
+    lipsMesh.rotation.z = -Math.PI * 0.09;
+    mouthGroup.add(lipsMesh);
 
-      // Realistic Iris with radial depth
-      const irisGeo = new THREE.CircleGeometry(0.022, 16);
-      const iris = new THREE.Mesh(irisGeo, irisMat);
-      iris.position.set(0, 0, 0.031);
+    // Clean white teeth arch showing confident smile
+    const teethGeo = new THREE.PlaneGeometry(0.020, 0.006);
+    const teethMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const teethMesh = new THREE.Mesh(teethGeo, teethMat);
+    teethMesh.position.set(0, -0.002, 0.004);
+    mouthGroup.add(teethMesh);
 
-      // Pupil
-      const pupilGeo = new THREE.CircleGeometry(0.010, 14);
-      const pupil = new THREE.Mesh(pupilGeo, pupilMat);
-      pupil.position.set(0, 0, 0.032);
+    // Soft lower lip volume
+    const lowerLipGeo = new THREE.BoxGeometry(0.018, 0.0042, 0.007);
+    const lowerLipMesh = new THREE.Mesh(lowerLipGeo, lipMat);
+    lowerLipMesh.position.set(0, -0.008, 0.005);
+    mouthGroup.add(lowerLipMesh);
 
-      // Cornea Specular Glint
-      const specGeo = new THREE.CircleGeometry(0.005, 8);
-      const spec = new THREE.Mesh(specGeo, corneaGlossMat);
-      spec.position.set(0.006, 0.007, 0.033);
+    return {
+      faceGroup,
+      leftEyeGroup,
+      rightEyeGroup,
+      leftUpperLid,
+      rightUpperLid,
+      leftEyelash,
+      rightEyelash,
+      leftEyebrowBone,
+      rightEyebrowBone,
+      noseGroup,
+      mouthGroup,
+      lipsMesh,
+      teethMesh,
+    };
+  }
 
-      // Upper Eyelid fold (skin crease)
-      const upperLidGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.012, 10, 1, false, 0, Math.PI);
-      const lidMat = this.skinMat;
-      const upperLid = new THREE.Mesh(upperLidGeo, lidMat);
-      upperLid.rotation.z = Math.PI / 2;
-      upperLid.rotation.y = Math.PI / 2;
-      upperLid.position.set(0, 0.025, 0.025);
+  /**
+   * Arm Chain with Articulated Athletic Runner Hand
+   */
+  private createArmChain(side: number): {
+    shoulderBone: THREE.Group;
+    bicepMesh: THREE.Mesh;
+    elbowBone: THREE.Group;
+    forearmMesh: THREE.Mesh;
+    wristBone: THREE.Group;
+    handRig: ArticulatedHandRig;
+    watchGroup: THREE.Group;
+  } {
+    const shoulderBone = new THREE.Group();
+    shoulderBone.position.set(side * 0.08, 0, 0);
 
-      // Lower Eyelid subtle contour
-      const lowerLid = upperLid.clone();
-      lowerLid.rotation.z = -Math.PI / 2;
-      lowerLid.position.set(0, -0.023, 0.022);
+    // Deltoid
+    const deltoidGeo = new THREE.SphereGeometry(0.076, 16, 16);
+    const deltoid = new THREE.Mesh(deltoidGeo, this.hoodieMat);
+    shoulderBone.add(deltoid);
 
-      eyeGroup.add(sclera, iris, pupil, spec, upperLid, lowerLid);
-      eyeGroup.position.set(side * 0.074, 0.245, 0.176);
-      return eyeGroup;
+    // Bicep Sleeve
+    const bicepGeo = new THREE.CylinderGeometry(0.060, 0.052, 0.26, 16);
+    const bicepMesh = new THREE.Mesh(bicepGeo, this.hoodieMat);
+    bicepMesh.position.set(0, -0.13, 0);
+    bicepMesh.castShadow = true;
+    shoulderBone.add(bicepMesh);
+
+    // Elbow Joint with Fabric Crease
+    const elbowBone = new THREE.Group();
+    elbowBone.position.set(0, -0.26, 0);
+    shoulderBone.add(elbowBone);
+
+    const creaseGeo = new THREE.TorusGeometry(0.052, 0.010, 8, 16);
+    const creaseMesh = new THREE.Mesh(creaseGeo, this.hoodieMat);
+    creaseMesh.rotation.x = Math.PI * 0.5;
+    elbowBone.add(creaseMesh);
+
+    // Forearm Sleeve
+    const forearmGeo = new THREE.CylinderGeometry(0.050, 0.044, 0.24, 16);
+    const forearmMesh = new THREE.Mesh(forearmGeo, this.hoodieMat);
+    forearmMesh.position.set(0, -0.12, 0);
+    forearmMesh.castShadow = true;
+    elbowBone.add(forearmMesh);
+
+    // Wrist Joint with Ribbed Cuff
+    const wristBone = new THREE.Group();
+    wristBone.position.set(0, -0.24, 0);
+    elbowBone.add(wristBone);
+
+    const cuffGeo = new THREE.CylinderGeometry(0.046, 0.046, 0.028, 16);
+    const cuffMesh = new THREE.Mesh(cuffGeo, this.hoodieMat);
+    wristBone.add(cuffMesh);
+
+    // Smart Fitness Watch on Left Wrist
+    const watchGroup = new THREE.Group();
+    if (side === -1) {
+      const strapGeo = new THREE.CylinderGeometry(0.048, 0.048, 0.034, 16);
+      const strapMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 });
+      const strap = new THREE.Mesh(strapGeo, strapMat);
+      watchGroup.add(strap);
+
+      const screenGeo = new THREE.BoxGeometry(0.028, 0.022, 0.012);
+      const screenMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.7,
+        roughness: 0.2,
+      });
+      const screen = new THREE.Mesh(screenGeo, screenMat);
+      screen.position.set(0, 0, 0.048);
+      watchGroup.add(screen);
+    }
+    wristBone.add(watchGroup);
+
+    // Stylized Athletic Hand in Runner Grip (Curved fist)
+    const handGroup = new THREE.Group();
+    wristBone.add(handGroup);
+
+    const palmGeo = new THREE.BoxGeometry(0.058, 0.062, 0.042);
+    const palmMesh = new THREE.Mesh(palmGeo, this.skinMat);
+    palmMesh.position.set(0, -0.032, 0);
+    handGroup.add(palmMesh);
+
+    // Curled Fingers Rig
+    const makeFinger = (xOffset: number, zOffset: number) => {
+      const mcp = new THREE.Group();
+      mcp.position.set(xOffset, -0.056, zOffset);
+      handGroup.add(mcp);
+
+      const fGeo = new THREE.CylinderGeometry(0.009, 0.008, 0.030, 8);
+      const fMesh = new THREE.Mesh(fGeo, this.skinMat);
+      fMesh.position.set(0, -0.015, 0);
+      mcp.add(fMesh);
+
+      const pip = new THREE.Group();
+      pip.position.set(0, -0.030, 0);
+      mcp.add(pip);
+
+      const dip = new THREE.Group();
+      dip.position.set(0, -0.024, 0);
+      pip.add(dip);
+
+      return { mcp, pip, dip };
     };
 
-    face.add(createRealisticEye(-1), createRealisticEye(1));
+    const index = makeFinger(side * -0.018, 0.015);
+    const middle = makeFinger(side * -0.006, 0.015);
+    const ring = makeFinger(side * 0.006, 0.015);
+    const pinky = makeFinger(side * 0.018, 0.015);
 
-    // 2. Realistic Athletic Masculine Eyebrows
-    const browMat = new THREE.MeshStandardMaterial({
-      color: 0x18181b,
-      roughness: 0.9,
-    });
-    const browGeo = new THREE.BoxGeometry(0.068, 0.015, 0.022);
+    const thumbCmc = new THREE.Group();
+    thumbCmc.position.set(side * -0.028, -0.024, -0.010);
+    handGroup.add(thumbCmc);
 
-    const browL = new THREE.Mesh(browGeo, browMat);
-    browL.position.set(-0.074, 0.288, 0.188);
-    browL.rotation.z = -0.12;
+    const thumbMcp = new THREE.Group();
+    thumbCmc.add(thumbMcp);
 
-    const browR = new THREE.Mesh(browGeo, browMat);
-    browR.position.set(0.074, 0.288, 0.188);
-    browR.rotation.z = 0.12;
+    const thumbIp = new THREE.Group();
+    thumbMcp.add(thumbIp);
 
-    face.add(browL, browR);
+    const thumbMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.009, 0.032, 8), this.skinMat);
+    thumbMesh.position.set(side * -0.011, -0.014, 0);
+    thumbMesh.rotation.z = side * 0.45;
+    thumbMcp.add(thumbMesh);
 
-    // 3. Realistic Sculpted Nose (Bridge, tip, and nostrils)
-    const noseGroup = new THREE.Group();
-    // Bridge
-    const bridgeGeo = new THREE.BoxGeometry(0.028, 0.075, 0.035);
-    const bridge = new THREE.Mesh(bridgeGeo, this.skinMat);
-    bridge.position.set(0, 0.22, 0.198);
-    bridge.rotation.x = -0.22;
+    const handRig: ArticulatedHandRig = {
+      handGroup,
+      wrist: wristBone,
+      thumb: { cmc: thumbCmc, mcp: thumbMcp, ip: thumbIp },
+      index,
+      middle,
+      ring,
+      pinky,
+    };
 
-    // Tip
-    const tipGeo = new THREE.SphereGeometry(0.024, 10, 10);
-    tipGeo.scale(1.0, 0.85, 1.15);
-    const tip = new THREE.Mesh(tipGeo, this.skinMat);
-    tip.position.set(0, 0.195, 0.218);
-
-    // Nostril wings
-    const nostrilGeo = new THREE.SphereGeometry(0.014, 8, 8);
-    const nostrilL = new THREE.Mesh(nostrilGeo, this.skinMat);
-    nostrilL.position.set(-0.024, 0.19, 0.208);
-    const nostrilR = new THREE.Mesh(nostrilGeo, this.skinMat);
-    nostrilR.position.set(0.024, 0.19, 0.208);
-
-    noseGroup.add(bridge, tip, nostrilL, nostrilR);
-    face.add(noseGroup);
-
-    // 4. Realistic Natural Lips
-    const lipMat = new THREE.MeshStandardMaterial({
-      color: 0x9f4430, // Natural muted lip tone
-      roughness: 0.5,
-    });
-    // Upper lip with philtrum notch
-    const upperLipGeo = new THREE.BoxGeometry(0.046, 0.011, 0.016);
-    const upperLip = new THREE.Mesh(upperLipGeo, lipMat);
-    upperLip.position.set(0, 0.155, 0.194);
-
-    // Lower lip
-    const lowerLipGeo = new THREE.BoxGeometry(0.044, 0.014, 0.018);
-    const lowerLip = new THREE.Mesh(lowerLipGeo, lipMat);
-    lowerLip.position.set(0, 0.141, 0.192);
-
-    face.add(upperLip, lowerLip);
-
-    // 5. Realistic Human Ears (Left & Right)
-    const earMat = this.skinMat;
-    const earGeo = new THREE.BoxGeometry(0.03, 0.09, 0.045);
-    const earL = new THREE.Mesh(earGeo, earMat);
-    earL.position.set(-0.192, 0.23, 0.02);
-    earL.rotation.y = 0.25;
-
-    const earR = new THREE.Mesh(earGeo, earMat);
-    earR.position.set(0.192, 0.23, 0.02);
-    earR.rotation.y = -0.25;
-
-    face.add(earL, earR);
-
-    // 6. Realistic Defined Jawline & Chin
-    const jawMat = this.skinMat;
-    const chinGeo = new THREE.BoxGeometry(0.085, 0.038, 0.065);
-    const chin = new THREE.Mesh(chinGeo, jawMat);
-    chin.position.set(0, 0.115, 0.165);
-    face.add(chin);
-
-    return face;
+    return {
+      shoulderBone,
+      bicepMesh,
+      elbowBone,
+      forearmMesh,
+      wristBone,
+      handRig,
+      watchGroup,
+    };
   }
 
   /**
-   * Articulated Running Arm with Bicep, Forearm, and Smartwatch
+   * Leg Chain with Athletic Joggers & Chunky Subway Sneakers
    */
-  private createArticulatedArm(side: number) {
-    const shoulder = new THREE.Group();
-    shoulder.position.set(side * 0.28, 0.38, 0);
+  private createLegChain(side: number): {
+    hipBone: THREE.Group;
+    thighMesh: THREE.Mesh;
+    kneeBone: THREE.Group;
+    shinBone: THREE.Group;
+    ankleBone: THREE.Group;
+    shoeGroup: THREE.Group;
+  } {
+    const hipBone = new THREE.Group();
+    hipBone.position.set(side * 0.115, -0.09, 0);
 
-    const arm = new THREE.Group();
-    shoulder.add(arm);
-
-    // Upper Arm (Sleeve)
-    const upperGeo = new THREE.CylinderGeometry(0.065, 0.055, 0.24, 10);
-    const upper = new THREE.Mesh(upperGeo, this.jacketSleeveMat);
-    upper.position.y = -0.12;
-    upper.castShadow = true;
-    arm.add(upper);
-
-    // Shoulder cap accent
-    const capGeo = new THREE.SphereGeometry(0.075, 10, 10);
-    const cap = new THREE.Mesh(capGeo, this.jacketShellMat);
-    cap.position.y = -0.02;
-    arm.add(cap);
-
-    // Elbow / Forearm Joint
-    const forearm = new THREE.Group();
-    forearm.position.set(0, -0.24, 0);
-    arm.add(forearm);
-
-    // Forearm Mesh (Skin / Rolled up sleeve)
-    const foreGeo = new THREE.CylinderGeometry(0.052, 0.045, 0.22, 10);
-    const fore = new THREE.Mesh(foreGeo, this.skinMat);
-    fore.position.y = -0.11;
-    fore.castShadow = true;
-    forearm.add(fore);
-
-    // Hand (Relaxed Runner Fist)
-    const handGeo = new THREE.BoxGeometry(0.07, 0.08, 0.065);
-    const hand = new THREE.Mesh(handGeo, this.skinMat);
-    hand.position.set(0, -0.24, 0);
-    hand.castShadow = true;
-    forearm.add(hand);
-
-    // Smartwatch on Left Wrist (side === -1)
-    if (side === -1) {
-      this.smartwatchMesh = new THREE.Group();
-      const bandGeo = new THREE.CylinderGeometry(0.056, 0.056, 0.04, 12);
-      const bandMat = new THREE.MeshStandardMaterial({ color: 0x18181b, metalness: 0.8 });
-      const band = new THREE.Mesh(bandGeo, bandMat);
-
-      const screenGeo = new THREE.BoxGeometry(0.042, 0.048, 0.015);
-      const screen = new THREE.Mesh(screenGeo, this.watchScreenMat);
-      screen.position.set(0, 0, 0.052);
-
-      this.smartwatchMesh.add(band, screen);
-      this.smartwatchMesh.position.set(0, -0.18, 0);
-      forearm.add(this.smartwatchMesh);
-    }
-
-    return { shoulder, arm, forearm, hand };
-  }
-
-  /**
-   * Articulated Running Leg with Thigh, Shin, and 3D Sculpted Sneakers
-   */
-  private createArticulatedLeg(side: number) {
-    const hipJoint = new THREE.Group();
-    hipJoint.position.set(side * 0.13, -0.08, 0);
-
-    const thigh = new THREE.Group();
-    hipJoint.add(thigh);
-
-    // Upper Thigh (Athletic Joggers)
-    const thighGeo = new THREE.CylinderGeometry(0.092, 0.072, 0.36, 12);
+    // Thigh - Athletic jogger thigh
+    const thighGeo = new THREE.CylinderGeometry(0.076, 0.060, 0.40, 18);
     const thighMesh = new THREE.Mesh(thighGeo, this.pantsMat);
-    thighMesh.position.y = -0.18;
+    thighMesh.position.set(0, -0.20, 0);
     thighMesh.castShadow = true;
-    thigh.add(thighMesh);
+    hipBone.add(thighMesh);
 
-    // Dynamic Red Runner Side Stripe
-    const stripeGeo = new THREE.BoxGeometry(0.018, 0.36, 0.04);
-    const stripe = new THREE.Mesh(stripeGeo, this.pantsStripesMat);
-    stripe.position.set(side * 0.09, -0.18, 0);
-    thigh.add(stripe);
+    // Knee Joint with Fabric Crease
+    const kneeBone = new THREE.Group();
+    kneeBone.position.set(0, -0.40, 0);
+    hipBone.add(kneeBone);
 
-    // Knee Joint
-    const kneeJoint = new THREE.Group();
-    kneeJoint.position.set(0, -0.36, 0);
-    thigh.add(kneeJoint);
+    const kneeCrease = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.010, 8, 16), this.pantsMat);
+    kneeCrease.rotation.x = Math.PI * 0.5;
+    kneeBone.add(kneeCrease);
 
-    const shin = new THREE.Group();
-    kneeJoint.add(shin);
+    // Shin / Lower Leg - Tapered Jogger Calf
+    const shinBone = new THREE.Group();
+    kneeBone.add(shinBone);
 
-    // Lower Shin (Tapered Joggers)
-    const shinGeo = new THREE.CylinderGeometry(0.07, 0.052, 0.35, 12);
+    const shinGeo = new THREE.CylinderGeometry(0.060, 0.048, 0.40, 18);
     const shinMesh = new THREE.Mesh(shinGeo, this.pantsMat);
-    shinMesh.position.y = -0.175;
+    shinMesh.position.set(0, -0.20, 0);
     shinMesh.castShadow = true;
-    shin.add(shinMesh);
+    shinBone.add(shinMesh);
 
-    // Ribbed Ankle Cuff
-    const cuffGeo = new THREE.CylinderGeometry(0.054, 0.054, 0.045, 10);
+    // Ankle Joint with Ribbed Jogger Cuff
+    const ankleBone = new THREE.Group();
+    ankleBone.position.set(0, -0.40, 0);
+    shinBone.add(ankleBone);
+
+    const cuffGeo = new THREE.CylinderGeometry(0.052, 0.052, 0.035, 16);
     const cuff = new THREE.Mesh(cuffGeo, this.pantsMat);
-    cuff.position.y = -0.33;
-    shin.add(cuff);
+    ankleBone.add(cuff);
 
-    // Ankle Joint & Sculpted Running Sneaker
-    const ankleJoint = new THREE.Group();
-    ankleJoint.position.set(0, -0.35, 0);
-    shin.add(ankleJoint);
+    // =========================================================================
+    // CHUNKY SUBWAY SURFERS RUNNER SNEAKERS
+    // =========================================================================
+    const shoeGroup = new THREE.Group();
+    ankleBone.add(shoeGroup);
 
-    const shoe = this.createRunningSneaker();
-    ankleJoint.add(shoe);
+    // 1. Thick Shock-Absorption White Rubber Outsole (0.04m thick with grip profile)
+    const soleGeo = new THREE.BoxGeometry(0.108, 0.040, 0.24);
+    const sole = new THREE.Mesh(soleGeo, this.shoeSoleMat);
+    sole.position.set(0, -0.075, 0.042);
+    sole.castShadow = true;
+    shoeGroup.add(sole);
 
-    return { hipJoint, thigh, kneeJoint, shin, ankleJoint, shoe };
-  }
-
-  /**
-   * Multi-layered Performance Running Sneaker with Air Bubble Cushioning
-   */
-  private createRunningSneaker(): THREE.Group {
-    const shoe = new THREE.Group();
-
-    // 1. Main Upper Shoe Body
-    const upperGeo = new THREE.BoxGeometry(0.12, 0.09, 0.26);
-    const upper = new THREE.Mesh(upperGeo, this.shoeUpperMat);
-    upper.position.set(0, -0.04, 0.04);
+    // 2. Sneaker Leather / Mesh Upper
+    const upperGeo = new THREE.BoxGeometry(0.102, 0.075, 0.22);
+    const upper = new THREE.Mesh(upperGeo, this.shoeMat);
+    upper.position.set(0, -0.030, 0.040);
     upper.castShadow = true;
-    shoe.add(upper);
+    shoeGroup.add(upper);
 
-    // 2. Toe Cap Spring
-    const toeGeo = new THREE.SphereGeometry(0.062, 10, 10);
-    toeGeo.scale(0.96, 0.7, 1.2);
-    const toe = new THREE.Mesh(toeGeo, this.shoeUpperMat);
-    toe.position.set(0, -0.05, 0.15);
-    shoe.add(toe);
+    // 3. Rounded Rubber Toe Cap / Bumper
+    const toeGeo = new THREE.SphereGeometry(0.050, 12, 12);
+    toeGeo.scale(1.0, 0.65, 0.95);
+    const toeBumper = new THREE.Mesh(toeGeo, this.shoeSoleMat);
+    toeBumper.position.set(0, -0.048, 0.142);
+    shoeGroup.add(toeBumper);
 
-    // 3. Thick Foam Midsole (White)
-    const midGeo = new THREE.BoxGeometry(0.128, 0.038, 0.28);
-    const midsole = new THREE.Mesh(midGeo, this.shoeMidsoleMat);
-    midsole.position.set(0, -0.085, 0.04);
-    shoe.add(midsole);
+    // 4. White Shoelace Criss-Cross & Sneaker Tongue
+    const tongueGeo = new THREE.BoxGeometry(0.055, 0.065, 0.08);
+    const tongue = new THREE.Mesh(tongueGeo, this.shoeSoleMat);
+    tongue.position.set(0, 0.005, 0.045);
+    tongue.rotation.x = -0.32;
+    shoeGroup.add(tongue);
 
-    // 4. Visible Translucent Heel Air Bubble Cushion
-    const airGeo = new THREE.BoxGeometry(0.122, 0.024, 0.1);
-    const airBubble = new THREE.Mesh(airGeo, this.shoeAirBubbleMat);
-    airBubble.position.set(0, -0.085, -0.05);
-    shoe.add(airBubble);
+    const lacesGeo = new THREE.BoxGeometry(0.058, 0.008, 0.075);
+    const laces = new THREE.Mesh(lacesGeo, this.shoeSoleMat);
+    laces.position.set(0, 0.010, 0.060);
+    shoeGroup.add(laces);
 
-    // 5. High-Traction Outsole (Dark)
-    const outGeo = new THREE.BoxGeometry(0.13, 0.018, 0.285);
-    const outsole = new THREE.Mesh(outGeo, this.shoeOutsoleMat);
-    outsole.position.set(0, -0.105, 0.04);
-    shoe.add(outsole);
-
-    // 6. Dynamic Red Swoop Accent
-    const swoopGeo = new THREE.BoxGeometry(0.134, 0.016, 0.14);
-    const swoop = new THREE.Mesh(swoopGeo, this.shoeAccentMat);
-    swoop.position.set(0, -0.04, 0.02);
-    shoe.add(swoop);
-
-    // 7. Tongue & Laces
-    const tongueGeo = new THREE.BoxGeometry(0.07, 0.05, 0.12);
-    const tongue = new THREE.Mesh(tongueGeo, this.shoeAccentMat);
-    tongue.position.set(0, 0.01, 0.05);
-    tongue.rotation.x = -0.3;
-    shoe.add(tongue);
-
-    return shoe;
+    return {
+      hipBone,
+      thighMesh,
+      kneeBone,
+      shinBone,
+      ankleBone,
+      shoeGroup,
+    };
   }
 
   /**
-   * Tactical Aerodynamic Runner Backpack
+   * Urban Runner Backpack
    */
   private createBackpack(): THREE.Group {
-    const pack = new THREE.Group();
-    pack.position.set(0, 0.22, -0.18);
+    const backpack = new THREE.Group();
+    backpack.position.set(0, 0.14, -0.14);
 
-    const packBodyGeo = new THREE.BoxGeometry(0.24, 0.32, 0.09);
-    const packBody = new THREE.Mesh(packBodyGeo, this.backpackMat);
-    packBody.castShadow = true;
-    pack.add(packBody);
+    // Main pack body
+    const packGeo = new THREE.BoxGeometry(0.24, 0.32, 0.14);
+    const packMesh = new THREE.Mesh(packGeo, this.backpackMat);
+    packMesh.castShadow = true;
+    backpack.add(packMesh);
 
-    // Red contrast zipper line
-    const packZipGeo = new THREE.BoxGeometry(0.18, 0.015, 0.095);
-    const packZip = new THREE.Mesh(packZipGeo, this.redAccentMat);
-    packZip.position.y = 0.08;
-    pack.add(packZip);
+    // Front pocket with golden Mesopotamian star
+    const pocketGeo = new THREE.BoxGeometry(0.18, 0.18, 0.06);
+    const pocket = new THREE.Mesh(pocketGeo, this.backpackMat);
+    pocket.position.set(0, -0.040, -0.095);
+    backpack.add(pocket);
 
-    // Rear LED safety reflector
-    const ledGeo = new THREE.BoxGeometry(0.08, 0.03, 0.015);
-    const ledMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-    const led = new THREE.Mesh(ledGeo, ledMat);
-    led.position.set(0, -0.1, -0.05);
-    pack.add(led);
+    const starEmblem = new THREE.Mesh(new THREE.CircleGeometry(0.030, 16), this.goldTrimMat);
+    starEmblem.position.set(0, -0.040, -0.126);
+    starEmblem.rotation.y = Math.PI;
+    backpack.add(starEmblem);
 
-    // Rear Name Badge Mesh on Backpack (Bassam - بسام)
-    const packBadgeGeo = new THREE.PlaneGeometry(0.22, 0.22);
-    const packBadgeMesh = new THREE.Mesh(packBadgeGeo, this.jacketBackMat);
-    packBadgeMesh.position.set(0, 0.02, -0.048);
-    packBadgeMesh.rotation.y = Math.PI; // Face rear camera
-    pack.add(packBadgeMesh);
-
-    return pack;
+    return backpack;
   }
 
-  // ==================== LIVE CUSTOMIZATION / SHOP ====================
+  /**
+   * Power-Up Meshes
+   */
+  private createShieldMesh(): THREE.Mesh {
+    const geo = new THREE.SphereGeometry(0.95, 24, 24);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.5,
+      transparent: true,
+      opacity: 0.35,
+      roughness: 0.1,
+    });
+    const shield = new THREE.Mesh(geo, mat);
+    shield.position.set(0, 0.95, 0);
+    shield.visible = false;
+    return shield;
+  }
+
+  private createMagnetAura(): THREE.Group {
+    const group = new THREE.Group();
+    group.position.set(0, 1.85, 0);
+
+    const ringGeo = new THREE.TorusGeometry(0.34, 0.025, 8, 24);
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      emissive: 0xd97706,
+      emissiveIntensity: 0.8,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI * 0.5;
+    group.add(ring);
+
+    group.visible = false;
+    return group;
+  }
+
+  private createTurboJetMesh(): THREE.Group {
+    const group = new THREE.Group();
+    group.position.set(0, 0.09, -0.20);
+
+    const coneGeo = new THREE.ConeGeometry(0.08, 0.25, 12);
+    const jetMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const jetL = new THREE.Mesh(coneGeo, jetMat);
+    jetL.rotation.x = Math.PI * 0.5;
+    jetL.position.set(-0.15, 0, 0);
+    group.add(jetL);
+
+    const jetR = new THREE.Mesh(coneGeo, jetMat);
+    jetR.rotation.x = Math.PI * 0.5;
+    jetR.position.set(0.15, 0, 0);
+    group.add(jetR);
+
+    group.visible = false;
+    return group;
+  }
+
+  /**
+   * Initialize & Profile
+   * Scaled to 1.08x baseline for solid Subway Surfers presence and high visual readability
+   */
+  public initializeCharacter(config?: { name?: string; age?: number; appearance?: Partial<CharacterAppearance> }) {
+    if (config?.name) this.characterName = config.name;
+    if (config?.age) this.age = config.age;
+    if (config?.appearance) this.appearance = { ...this.appearance, ...config.appearance };
+
+    // Solid, Subway Surfers proportion scale factor (1.08)
+    const subwayScale = 1.08;
+    const heightRatio = (this.appearance.heightMeters / 1.78) * subwayScale;
+    this.group.scale.set(heightRatio, heightRatio, heightRatio);
+  }
+
+  public applyAppearance(appearance: Partial<CharacterAppearance>) {
+    this.initializeCharacter({ appearance });
+  }
+
+  public setEyeColor(colorHex: string, label: string = 'بني طبيعي') {
+    this.appearance.eyeColor.hex = colorHex;
+    this.appearance.eyeColor.label = label;
+    this.eyeIrisMat.map = HighPrecisionTextureEngine.createIrisTexture(colorHex);
+    this.eyeIrisMat.map.needsUpdate = true;
+  }
+
+  /**
+   * Shop & Outfit Customization
+   */
   public applyCustomization(customization: PlayerCustomization) {
-    // 1. Outfit Customization (Supporting all 20 distinctive styles)
     const outfit = SHOP_ITEMS.find((i) => i.id === customization.equippedOutfit);
-    if (outfit) {
-      this.jacketShellMat.color.set(outfit.colorHex);
-      this.jacketSleeveMat.color.set(outfit.secondaryColorHex || '#18181b');
-      this.hoodInteriorMat.color.set(outfit.secondaryColorHex || '#991b1b');
-      this.innerShirtMat.color.set(outfit.secondaryColorHex ? outfit.secondaryColorHex : '#18181b');
-      this.pantsMat.color.set(outfit.secondaryColorHex ? '#18181b' : '#27272a');
-      this.pantsStripesMat.color.set(outfit.colorHex);
-    }
+    const primary = outfit?.colorHex || '#1d4ed8';
+    const secondary = outfit?.secondaryColorHex || '#f59e0b';
 
-    // 2. Shoes Customization
-    const shoes = SHOP_ITEMS.find((i) => i.id === customization.equippedShoes);
-    if (shoes) {
-      this.shoeUpperMat.color.set(shoes.colorHex);
-      if (shoes.id === 'shoes_classic_runner') {
-        this.shoeUpperMat.color.set(0x18181b);
-        this.shoeAccentMat.color.set(0xef4444);
-        this.shoeMidsoleMat.color.set(0xffffff);
-      } else if (shoes.id === 'shoes_lightning_bolt') {
-        this.shoeUpperMat.color.set(0x18181b);
-        this.shoeAccentMat.color.set(0xf59e0b);
-        this.shoeMidsoleMat.color.set(0xfef08a);
-      } else if (shoes.id === 'shoes_ocean_surge') {
-        this.shoeUpperMat.color.set(0x0284c7);
-        this.shoeAccentMat.color.set(0x06b6d4);
-        this.shoeMidsoleMat.color.set(0xffffff);
-      } else if (shoes.id === 'shoes_phoenix_flame') {
-        this.shoeUpperMat.color.set(0xef4444);
-        this.shoeAccentMat.color.set(0xf97316);
-        this.shoeMidsoleMat.color.set(0x18181b);
-      } else {
-        this.shoeUpperMat.color.set(shoes.colorHex);
-        this.shoeAccentMat.color.set(shoes.colorHex);
-      }
-    }
+    this.textureManager.setColors(primary, secondary, '#0f172a', primary);
+    this.textureManager.regenerateTextures();
 
-    // 3. Trail Customization
-    const trail = SHOP_ITEMS.find((i) => i.id === customization.equippedTrail);
-    if (trail) {
-      (this.trailParticles.material as THREE.PointsMaterial).color.set(trail.colorHex);
-    }
+    this.hoodieMat.map = this.textureManager.textures.jacketAlbedo;
+    this.hoodieMat.needsUpdate = true;
 
-    // 4. Accessories
-    if (this.shemaghMesh) {
-      this.headGroup.remove(this.shemaghMesh);
-      this.shemaghMesh = null;
-    }
-    if (this.sunglassesMesh) {
-      this.faceGroup.remove(this.sunglassesMesh);
-      this.sunglassesMesh = null;
-    }
-    if (this.headphonesMesh) {
-      this.headGroup.remove(this.headphonesMesh);
-      this.headphonesMesh = null;
-    }
+    this.pantsMat.map = this.textureManager.textures.joggersAlbedo;
+    this.pantsMat.needsUpdate = true;
 
-    if (customization.equippedAccessory === 'acc_modern_shemagh') {
-      this.shemaghMesh = new THREE.Group();
-      const shemaghGeo = new THREE.TorusGeometry(0.25, 0.08, 10, 20);
-      const shemaghMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.8 });
-      const shemaghTorus = new THREE.Mesh(shemaghGeo, shemaghMat);
-      shemaghTorus.position.set(0, 0.04, 0.02);
-      shemaghTorus.rotation.x = Math.PI / 2;
-      this.shemaghMesh.add(shemaghTorus);
-      this.headGroup.add(this.shemaghMesh);
-    } else if (customization.equippedAccessory === 'acc_sport_shades') {
-      this.sunglassesMesh = new THREE.Group();
-      const shadesGeo = new THREE.BoxGeometry(0.28, 0.06, 0.06);
-      const shadesMat = new THREE.MeshStandardMaterial({
-        color: 0x0f172a,
-        roughness: 0.1,
-        metalness: 0.9,
-      });
-      const shadesMesh = new THREE.Mesh(shadesGeo, shadesMat);
-      shadesMesh.position.set(0, 0.25, 0.2);
-      this.sunglassesMesh.add(shadesMesh);
-      this.faceGroup.add(this.sunglassesMesh);
-    } else if (customization.equippedAccessory === 'acc_pro_headphones') {
-      this.headphonesMesh = new THREE.Group();
-      const bandGeo = new THREE.TorusGeometry(0.23, 0.03, 8, 18, Math.PI);
-      const bandMat = new THREE.MeshStandardMaterial({ color: 0x6366f1, metalness: 0.6 });
-      const band = new THREE.Mesh(bandGeo, bandMat);
-      band.position.set(0, 0.26, 0);
+    this.shoeMat.map = this.textureManager.textures.sneakersAlbedo;
+    this.shoeMat.needsUpdate = true;
 
-      const earGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.05, 14);
-      const earL = new THREE.Mesh(earGeo, bandMat);
-      earL.position.set(-0.22, 0.24, 0);
-      earL.rotation.z = Math.PI / 2;
-      const earR = new THREE.Mesh(earGeo, bandMat);
-      earR.position.set(0.22, 0.24, 0);
-      earR.rotation.z = Math.PI / 2;
+    this.backpackMat.map = this.textureManager.textures.backpackAlbedo;
+    this.backpackMat.needsUpdate = true;
 
-      this.headphonesMesh.add(band, earL, earR);
-      this.headGroup.add(this.headphonesMesh);
-    }
-  }
-
-  // ==================== FLUID BIOMECHANICS & ANIMATION ENGINE ====================
-  public update(
-    delta: number,
-    runSpeed: number,
-    balanceSkillLevel: number,
-    jumpSkillBonus: number,
-    slideSkillBonus: number
-  ) {
-    // 1. Running Cadence Frequency
-    const speedRatio = Math.max(1, runSpeed / 12);
-    this.animTime += delta * speedRatio;
-    this.gaitPhase = this.animTime * 11.5;
-
-    // 2. Smooth Lane Change Physics with Natural Bank Angle
-    const laneSpeed = this.laneChangeSpeed * (1 + (balanceSkillLevel - 1) * 0.08);
-    this.laneX += (this.targetLaneX - this.laneX) * Math.min(delta * laneSpeed, 1);
-    this.group.position.x = this.laneX;
-
-    const laneDiff = this.targetLaneX - this.laneX;
-    // In camera view looking towards +Z:
-    // World X = -2.5 is Screen LEFT, World X = +2.5 is Screen RIGHT.
-    // When moving towards Left (-X), laneDiff < 0 -> lean left (positive Z rotation tilts top to Left).
-    // When moving towards Right (+X), laneDiff > 0 -> lean right (negative Z rotation tilts top to Right).
-    this.rollAngle += (-laneDiff * 0.12 - this.rollAngle) * Math.min(delta * 14, 1);
-    this.group.rotation.z = this.rollAngle;
-    // Face smoothly into the movement direction (positive yaw towards right, negative towards left)
-    this.group.rotation.y = laneDiff * 0.065;
-
-    // 3. Jump & Parabolic Gravity Physics
-    if (!this.isGrounded) {
-      const gravity = -32;
-      this.jumpVelocity += gravity * delta;
-      this.jumpY += this.jumpVelocity * delta;
-
-      if (this.jumpY <= 0) {
-        this.jumpY = 0;
-        this.jumpVelocity = 0;
-        this.isGrounded = true;
-        this.landingSquash = 0.12; // Landing cushion compression
-        if (this.currentAction === 'JUMP') {
-          this.currentAction = 'RUN';
-        }
-      }
-      this.group.position.y = this.jumpY;
-    }
-
-    // Landing cushion squash recovery
-    if (this.landingSquash > 0) {
-      this.landingSquash = Math.max(0, this.landingSquash - delta * 1.2);
-    }
-
-    // 4. Slide Timer Physics
-    if (this.currentAction === 'SLIDE') {
-      this.slideTimer -= delta;
-      this.hitboxHeight = 0.85; // Low duck profile
-      if (this.slideTimer <= 0) {
-        this.currentAction = 'RUN';
-        this.hitboxHeight = 1.8;
-      }
+    // Handle Thobe Outfits
+    if (customization.equippedOutfit.includes('thobe') || customization.equippedOutfit.includes('jalabiya')) {
+      this.thobeSkirt.visible = true;
+      (this.thobeSkirt.material as THREE.MeshStandardMaterial).color.set(primary);
     } else {
-      this.hitboxHeight = 1.8;
-    }
-
-    // 5. High-Fidelity Biomechanical Bone Synthesis
-    this.animateBones(delta);
-
-    // 6. Power-Up Meshes Update
-    if (this.shieldMesh.visible) {
-      this.shieldMesh.rotation.y += delta * 2;
-      this.shieldMesh.rotation.x += delta * 1.5;
-    }
-    if (this.magnetAura.visible) {
-      this.magnetAura.rotation.z += delta * 4;
-      const scale = 1 + Math.sin(this.animTime * 6) * 0.08;
-      this.magnetAura.scale.set(scale, scale, scale);
-    }
-
-    // 7. Particle Trail Update
-    this.updateTrail(delta);
-  }
-
-  private animateBones(delta: number) {
-    if (this.currentAction === 'RUN') {
-      const phase = this.gaitPhase;
-      const sinP = Math.sin(phase);
-      const cosP = Math.cos(phase);
-      const sin2P = Math.sin(phase * 2); // 2x frequency for vertical bounce per stride
-
-      // 1. Natural Pelvis Vertical Double-Bounce & Lateral Sway
-      // Human runners bounce down at foot contact and rise at mid-stride
-      const verticalBounce = Math.abs(cosP) * 0.07 - this.landingSquash;
-      this.rootBone.position.y = 0.95 + verticalBounce;
-
-      // Pelvic Lateral Roll and Yaw (Twist with swinging leg)
-      this.hipsGroup.rotation.z = sinP * 0.04;
-      this.hipsGroup.rotation.y = sinP * 0.06;
-
-      // 2. Counter-Torso Rotation on Spine
-      // Spine twists opposite to the hips to balance running momentum
-      this.spineGroup.rotation.y = -sinP * 0.07;
-      this.spineGroup.rotation.x = 0.14; // Forward athletic runner lean
-      this.spineGroup.rotation.z = -sinP * 0.03;
-
-      // Head Stabilizer: Looks forward along the road
-      this.headGroup.rotation.x = -0.1;
-      this.headGroup.rotation.y = sinP * 0.02;
-
-      // 3. Multi-Joint Leg Kinematics (Thigh, Knee, Ankle)
-      // Left Leg
-      this.leftHipJoint.rotation.x = sinP * 0.82;
-      // Knee bends on backstroke (when thigh moves back) and uncurls forward
-      const leftKneeBend = Math.max(0, -sinP) * 1.15;
-      this.leftKneeJoint.rotation.x = leftKneeBend;
-      // Ankle rolls for ground contact spring
-      this.leftAnkleJoint.rotation.x = -sinP * 0.25;
-
-      // Right Leg (Opposite phase)
-      this.rightHipJoint.rotation.x = -sinP * 0.82;
-      const rightKneeBend = Math.max(0, sinP) * 1.15;
-      this.rightKneeJoint.rotation.x = rightKneeBend;
-      this.rightAnkleJoint.rotation.x = sinP * 0.25;
-
-      // 4. Natural Arm Swings (Elbows flexed ~80°, natural shoulder dips)
-      // Left Arm swings opposite to Left Leg
-      this.leftShoulder.rotation.x = -sinP * 0.72;
-      this.leftShoulder.rotation.z = -0.15 - Math.abs(cosP) * 0.05;
-      this.leftForearm.rotation.x = -0.45 + Math.abs(sinP) * 0.25; // Elbow flexes forward
-
-      // Right Arm
-      this.rightShoulder.rotation.x = sinP * 0.72;
-      this.rightShoulder.rotation.z = 0.15 + Math.abs(cosP) * 0.05;
-      this.rightForearm.rotation.x = -0.45 + Math.abs(sinP) * 0.25;
-    } else if (this.currentAction === 'JUMP') {
-      // Dynamic Airborne Stride Pose
-      this.rootBone.position.y = 0.95;
-      this.spineGroup.rotation.x = -0.08;
-      this.spineGroup.rotation.y = 0;
-      this.hipsGroup.rotation.z = 0;
-
-      // Lead leg up, trailing leg extended aerodynamically
-      this.leftHipJoint.rotation.x = -0.75;
-      this.leftKneeJoint.rotation.x = 1.0;
-      this.leftAnkleJoint.rotation.x = -0.2;
-
-      this.rightHipJoint.rotation.x = 0.45;
-      this.rightKneeJoint.rotation.x = 0.3;
-      this.rightAnkleJoint.rotation.x = 0.4;
-
-      // Arms raised for dynamic airborne balance
-      this.leftShoulder.rotation.x = 0.95;
-      this.leftShoulder.rotation.z = -0.35;
-      this.leftForearm.rotation.x = -0.6;
-
-      this.rightShoulder.rotation.x = 0.85;
-      this.rightShoulder.rotation.z = 0.35;
-      this.rightForearm.rotation.x = -0.6;
-    } else if (this.currentAction === 'SLIDE') {
-      // Low Athletic Sprint Slide
-      this.rootBone.position.y = 0.42; // Drop low center of gravity
-      this.spineGroup.rotation.x = -0.78; // Lean back smoothly
-      this.spineGroup.rotation.y = 0.1;
-
-      // Extended front leg, tucked back leg
-      this.leftHipJoint.rotation.x = -1.25;
-      this.leftKneeJoint.rotation.x = 0.2;
-
-      this.rightHipJoint.rotation.x = -0.95;
-      this.rightKneeJoint.rotation.x = 1.35;
-
-      // Arms out for slide stability
-      this.leftShoulder.rotation.x = -0.85;
-      this.leftShoulder.rotation.z = -0.55;
-      this.rightShoulder.rotation.x = 0.45;
-      this.rightShoulder.rotation.z = 0.45;
-    } else if (this.currentAction === 'CRASH') {
-      // Realistic Stumble & Tumble
-      this.rootBone.position.y = 0.28;
-      this.spineGroup.rotation.x = -1.0;
-      this.hipsGroup.rotation.z = 0.3;
-      this.leftHipJoint.rotation.x = 0.8;
-      this.rightHipJoint.rotation.x = -0.7;
-      this.leftShoulder.rotation.z = -1.2;
-      this.rightShoulder.rotation.z = 1.2;
-    } else if (this.currentAction === 'IDLE') {
-      // Relaxed Breathing Cycle & Weight Shifting
-      const breath = Math.sin(this.animTime * 2.2);
-      const weightShift = Math.sin(this.animTime * 0.9);
-
-      this.rootBone.position.y = 0.95 + breath * 0.012;
-      this.spineGroup.position.y = 0.14 + breath * 0.015;
-      this.spineGroup.rotation.x = breath * 0.02;
-      this.spineGroup.rotation.y = weightShift * 0.04;
-
-      this.hipsGroup.rotation.z = weightShift * 0.02;
-
-      this.leftHipJoint.rotation.x = 0;
-      this.rightHipJoint.rotation.x = 0;
-      this.leftKneeJoint.rotation.x = 0;
-      this.rightKneeJoint.rotation.x = 0;
-
-      // Relaxed arms hanging naturally by sides
-      this.leftShoulder.rotation.x = 0.04 + breath * 0.02;
-      this.leftShoulder.rotation.z = -0.1;
-      this.leftForearm.rotation.x = -0.15;
-
-      this.rightShoulder.rotation.x = 0.04 + breath * 0.02;
-      this.rightShoulder.rotation.z = 0.1;
-      this.rightForearm.rotation.x = -0.15;
-
-      this.headGroup.rotation.x = -0.02;
-      this.headGroup.rotation.y = weightShift * 0.03;
+      this.thobeSkirt.visible = false;
     }
   }
 
-  private updateTrail(delta: number) {
-    const pos = this.trailPositions;
-    for (let i = (this.trailCount - 1) * 3; i >= 3; i -= 3) {
-      pos[i] = pos[i - 3];
-      pos[i + 1] = pos[i - 2];
-      pos[i + 2] = pos[i - 1] - delta * 16;
-    }
+  public updateEnvironment(weather: WeatherType, biome: BiomeType) {
+    this.textureManager.updateEnvironment(weather, biome);
 
-    pos[0] = (Math.random() - 0.5) * 0.4;
-    pos[1] = -0.85 + (Math.random() - 0.5) * 0.2;
-    pos[2] = -0.2;
+    this.hoodieMat.map = this.textureManager.textures.jacketAlbedo;
+    this.hoodieMat.needsUpdate = true;
 
-    this.trailParticles.geometry.attributes.position.needsUpdate = true;
+    this.pantsMat.map = this.textureManager.textures.joggersAlbedo;
+    this.pantsMat.needsUpdate = true;
+
+    this.shoeMat.map = this.textureManager.textures.sneakersAlbedo;
+    this.shoeMat.needsUpdate = true;
   }
 
-  // ==================== PLAYER CONTROLS ====================
+  /**
+   * Trigger the Landing Rebound (ارتداد خفيف عند الهبوط من القفز)
+   */
+  public triggerLandingRebound() {
+    this.landingReboundTime = this.landingReboundDuration;
+    this.emitLandingDustBurst();
+  }
+
+  /**
+   * ============================================================================
+   * REALISTIC & FLUID SUBWAY SURFERS RUNNING BIOMECHANICS WITH LANDING REBOUND
+   * ============================================================================
+   */
+  public updateAnimation(delta: number, runSpeed: number = 14, speedRatio: number = 1.0) {
+    this.animTime += delta;
+
+    // 1. Organic Eye Blinking Cycle (~3.2s interval)
+    this.blinkTimer += delta;
+    if (this.blinkTimer > 3.2 + Math.sin(this.animTime * 0.4) * 0.6) {
+      this.isBlinking = true;
+      this.blinkTimer = 0;
+      this.blinkProgress = 0;
+    }
+
+    if (this.isBlinking) {
+      this.blinkProgress += delta * 14;
+      const lidAngle = Math.sin(this.blinkProgress * Math.PI) * Math.PI * 0.48;
+      this.facialRig.leftUpperLid.rotation.x = -Math.PI * 0.5 + lidAngle;
+      this.facialRig.rightUpperLid.rotation.x = -Math.PI * 0.5 + lidAngle;
+
+      if (this.blinkProgress >= 1.0) {
+        this.isBlinking = false;
+        this.facialRig.leftUpperLid.rotation.x = -Math.PI * 0.5;
+        this.facialRig.rightUpperLid.rotation.x = -Math.PI * 0.5;
+      }
+    }
+
+    // 2. Secondary Dynamics: Drawstrings & Hair Fringe with Wind & Momentum
+    const cordSway = Math.sin(this.animTime * 13) * 0.10 * speedRatio;
+    this.drawstringL.rotation.z = cordSway;
+    this.drawstringR.rotation.z = -cordSway;
+    this.drawstringL.rotation.x = 0.14 * speedRatio;
+    this.drawstringR.rotation.x = 0.14 * speedRatio;
+
+    const hairSway = Math.sin(this.animTime * 15) * 0.07 * speedRatio;
+    this.hairFringe.rotation.x = hairSway + 0.09 * speedRatio;
+
+    // 3. Actions Kinematics
+    switch (this.currentAction) {
+      case 'RUN': {
+        // Step cadence scales realistically with speed
+        this.gaitPhase += delta * runSpeed * 0.60;
+
+        const sinG = Math.sin(this.gaitPhase);
+        const cosG = Math.cos(this.gaitPhase);
+
+        // A. Pelvic Kinematics:
+        // - Vertical Stride Bounce (Double frequency: lowest at foot-plant, highest at flight apex)
+        const strideBounce = (Math.sin(this.gaitPhase * 2 - Math.PI * 0.5) * 0.5 + 0.5) * 0.055 * speedRatio;
+
+        // - Landing Rebound Spring Damping (ارتداد الهبوط عند ملامسة الأرض)
+        let reboundOffset = 0;
+        let reboundKneeBend = 0;
+        let reboundSquashY = 0;
+        let reboundSquashXZ = 0;
+
+        if (this.landingReboundTime > 0) {
+          this.landingReboundTime -= delta;
+          const p = Math.max(0, 1.0 - this.landingReboundTime / this.landingReboundDuration);
+          // Elastic spring response: initial compression then damped rebound oscillation
+          const spring = Math.sin(p * Math.PI * 1.5) * Math.exp(-p * 3.2);
+          reboundOffset = -spring * 0.12; // Dip down then rebound up
+          reboundKneeBend = Math.max(0, -spring) * 0.35;
+          reboundSquashY = -spring * 0.08;
+          reboundSquashXZ = spring * 0.04;
+
+          if (this.landingReboundTime <= 0) {
+            this.landingReboundTime = 0;
+          }
+        }
+
+        this.pelvisBone.position.y = 0.96 + strideBounce + reboundOffset;
+
+        // Apply landing squash scale to root group
+        const baseScale = (this.appearance.heightMeters / 1.78) * 1.08;
+        this.group.scale.y = baseScale * (1 + reboundSquashY);
+        this.group.scale.x = baseScale * (1 + reboundSquashXZ);
+        this.group.scale.z = baseScale * (1 + reboundSquashXZ);
+
+        // - Pelvic Yaw (Rotates forward toward stepping leg)
+        this.pelvisBone.rotation.y = sinG * 0.11 * speedRatio;
+
+        // - Pelvic Roll (Trendelenburg tilt toward stance leg)
+        this.pelvisBone.rotation.z = cosG * 0.038 * speedRatio;
+
+        // - Pelvic Pitch
+        this.pelvisBone.rotation.x = 0.06;
+
+        // B. Torso & Chest Counter-Rotation:
+        // - Chest yaw turns opposite to pelvis for athletic balance
+        this.chestBone.rotation.y = -sinG * 0.13 * speedRatio;
+        // - Chest roll compensates pelvic tilt to keep upper torso stable
+        this.chestBone.rotation.z = -cosG * 0.026 * speedRatio;
+        // - Forward athletic lean (Subway Surfers signature posture)
+        this.chestBone.rotation.x = 0.15;
+
+        // C. Head Stabilization (Eyes focused ahead):
+        this.headBone.rotation.y = sinG * 0.03;
+        this.headBone.rotation.z = -this.chestBone.rotation.z * 0.8;
+        this.headBone.rotation.x = -0.09;
+
+        // D. Leg Stride Cycle (Fluid & Physically Accurate):
+        // Left Leg
+        const leftHipAngle = -sinG * 0.80 * speedRatio;
+        this.hipLeftBone.rotation.x = leftHipAngle;
+        this.hipLeftBone.rotation.y = -sinG * 0.04;
+        this.hipLeftBone.rotation.z = 0.02;
+
+        if (sinG < 0) {
+          // Forward drive: knee flexes up
+          this.kneeLeftBone.rotation.x = Math.abs(sinG) * 0.85 + reboundKneeBend;
+        } else {
+          // Push-off recovery: heel kicks up toward glutes
+          this.kneeLeftBone.rotation.x = Math.pow(sinG, 1.3) * 1.35 + reboundKneeBend;
+        }
+
+        this.ankleLeftBone.rotation.x = -cosG * 0.28;
+
+        // Right Leg (180° out of phase)
+        const rightHipAngle = sinG * 0.80 * speedRatio;
+        this.hipRightBone.rotation.x = rightHipAngle;
+        this.hipRightBone.rotation.y = sinG * 0.04;
+        this.hipRightBone.rotation.z = -0.02;
+
+        if (sinG > 0) {
+          this.kneeRightBone.rotation.x = Math.abs(sinG) * 0.85 + reboundKneeBend;
+        } else {
+          this.kneeRightBone.rotation.x = Math.pow(-sinG, 1.3) * 1.35 + reboundKneeBend;
+        }
+
+        this.ankleRightBone.rotation.x = cosG * 0.28;
+
+        // E. Arm Pumping (Opposite to legs, bent at 85°-95°):
+        const leftArmAngle = sinG * 0.74 * speedRatio;
+        this.shoulderLeftBone.rotation.x = leftArmAngle;
+        this.shoulderLeftBone.rotation.z = -0.08 - Math.max(0, -leftArmAngle) * 0.12;
+        this.shoulderLeftBone.rotation.y = sinG * 0.08;
+
+        this.elbowLeftBone.rotation.x = -1.35 - Math.max(0, leftArmAngle) * 0.35;
+
+        const rightArmAngle = -sinG * 0.74 * speedRatio;
+        this.shoulderRightBone.rotation.x = rightArmAngle;
+        this.shoulderRightBone.rotation.z = 0.08 + Math.max(0, -rightArmAngle) * 0.12;
+        this.shoulderRightBone.rotation.y = -sinG * 0.08;
+
+        this.elbowRightBone.rotation.x = -1.35 - Math.max(0, rightArmAngle) * 0.35;
+
+        // F. Smooth Lateral Banking on Lane Shifts (Critically Damped)
+        const targetRoll = (this.laneX - this.targetLaneX) * 0.11;
+        this.rollAngle = THREE.MathUtils.lerp(this.rollAngle, targetRoll, delta * 14);
+        this.group.rotation.z = this.rollAngle;
+        this.group.rotation.y = -this.rollAngle * 0.35; // Slight steering yaw
+
+        // Footstep dust
+        if (strideBounce < 0.012 && this.animTime - this.nextDustIdx > 0.16) {
+          this.emitFootstepDust();
+          this.nextDustIdx = this.animTime;
+        }
+        break;
+      }
+
+      case 'JUMP': {
+        this.jumpVelocity += this.gravity * delta;
+        this.jumpY += this.jumpVelocity * delta;
+
+        if (this.jumpY <= 0) {
+          this.jumpY = 0;
+          this.jumpVelocity = 0;
+          this.isGrounded = true;
+          this.currentAction = 'RUN';
+          // Trigger the landing rebound effect!
+          this.triggerLandingRebound();
+        }
+
+        this.group.position.y = this.jumpY;
+
+        // Dynamic Athletic Leap Pose (Knees tucked, arms poised for balance)
+        this.hipLeftBone.rotation.x = -0.95;
+        this.kneeLeftBone.rotation.x = 1.45;
+        this.ankleLeftBone.rotation.x = 0.35;
+
+        this.hipRightBone.rotation.x = -0.45;
+        this.kneeRightBone.rotation.x = 1.15;
+        this.ankleRightBone.rotation.x = -0.20;
+
+        // Arms swept back for aerodynamic glide
+        this.shoulderLeftBone.rotation.x = 0.65;
+        this.shoulderLeftBone.rotation.z = -0.25;
+        this.elbowLeftBone.rotation.x = -0.65;
+
+        this.shoulderRightBone.rotation.x = 0.65;
+        this.shoulderRightBone.rotation.z = 0.25;
+        this.elbowRightBone.rotation.x = -0.65;
+
+        this.chestBone.rotation.x = 0.22;
+        this.pelvisBone.rotation.set(0, 0, 0);
+        this.headBone.rotation.x = -0.14;
+        break;
+      }
+
+      case 'SLIDE': {
+        this.slideTimer -= delta;
+        if (this.slideTimer <= 0) {
+          this.currentAction = 'RUN';
+          this.pelvisBone.position.y = 0.96;
+          this.chestBone.rotation.x = 0;
+        } else {
+          // Dynamic Low Subway Parkour Slide
+          this.pelvisBone.position.y = 0.42;
+          this.chestBone.rotation.x = -0.65;
+          this.chestBone.rotation.y = 0.14;
+
+          // Extended lead leg
+          this.hipLeftBone.rotation.x = -1.45;
+          this.kneeLeftBone.rotation.x = 0.08;
+          this.ankleLeftBone.rotation.x = 0.30;
+
+          // Tucked rear leg
+          this.hipRightBone.rotation.x = 0.45;
+          this.hipRightBone.rotation.z = -0.20;
+          this.kneeRightBone.rotation.x = 1.65;
+
+          // Bracing arms skimming asphalt
+          this.shoulderLeftBone.rotation.x = 0.75;
+          this.shoulderLeftBone.rotation.z = -0.35;
+          this.elbowLeftBone.rotation.x = -0.45;
+
+          this.shoulderRightBone.rotation.x = 0.55;
+          this.shoulderRightBone.rotation.z = 0.25;
+          this.elbowRightBone.rotation.x = -0.65;
+        }
+        break;
+      }
+
+      case 'IDLE': {
+        // Lively Subway Surfers Idle (Breathing, relaxed runner posture, weight shift)
+        const breath = Math.sin(this.animTime * 2.2) * 0.020;
+        const sway = Math.sin(this.animTime * 1.1) * 0.016;
+
+        this.chestBone.position.y = 0.14 + breath;
+        this.pelvisBone.position.y = 0.96 + breath * 0.5;
+        this.pelvisBone.rotation.z = sway;
+
+        this.chestBone.rotation.x = 0.04;
+        this.chestBone.rotation.y = -sway * 0.8;
+        this.headBone.rotation.y = sway * 0.5;
+
+        this.shoulderLeftBone.rotation.x = -0.12 + breath * 0.4;
+        this.shoulderLeftBone.rotation.z = -0.08;
+        this.shoulderRightBone.rotation.x = -0.12 + breath * 0.4;
+        this.shoulderRightBone.rotation.z = 0.08;
+
+        this.elbowLeftBone.rotation.x = -0.42;
+        this.elbowRightBone.rotation.x = -0.42;
+
+        this.hipLeftBone.rotation.x = 0;
+        this.hipRightBone.rotation.x = 0;
+        this.kneeLeftBone.rotation.x = 0.05;
+        this.kneeRightBone.rotation.x = 0.05;
+        this.group.rotation.set(0, 0, 0);
+        break;
+      }
+
+      case 'CRASH': {
+        this.chestBone.rotation.x = -0.55;
+        this.hipLeftBone.rotation.x = 0.45;
+        this.hipRightBone.rotation.x = -0.45;
+        this.group.position.y = Math.max(0, this.group.position.y - delta * 4);
+        break;
+      }
+    }
+
+    // Update Dust Particles
+    this.updateFootstepDust(delta);
+  }
+
+  private emitFootstepDust() {
+    const pos = this.footstepPositions;
+    const vel = this.footstepVel;
+    const life = this.footstepLife;
+    const charPos = this.group.position;
+
+    for (let i = 0; i < 4; i++) {
+      const idx = (Math.floor(this.animTime * 20) + i) % 50;
+      life[idx] = 0.42;
+      pos[idx * 3] = charPos.x + (Math.random() - 0.5) * 0.24;
+      pos[idx * 3 + 1] = 0.04;
+      pos[idx * 3 + 2] = charPos.z - 0.15;
+
+      vel[idx * 3] = (Math.random() - 0.5) * 0.35;
+      vel[idx * 3 + 1] = 0.28 + Math.random() * 0.25;
+      vel[idx * 3 + 2] = -0.45 - Math.random() * 0.4;
+    }
+  }
+
+  private emitLandingDustBurst() {
+    const pos = this.footstepPositions;
+    const vel = this.footstepVel;
+    const life = this.footstepLife;
+    const charPos = this.group.position;
+
+    for (let i = 0; i < 12; i++) {
+      const idx = (Math.floor(this.animTime * 20) + i) % 50;
+      life[idx] = 0.55;
+      const angle = (i / 12) * Math.PI * 2;
+      const r = 0.15 + Math.random() * 0.20;
+
+      pos[idx * 3] = charPos.x + Math.cos(angle) * r;
+      pos[idx * 3 + 1] = 0.04;
+      pos[idx * 3 + 2] = charPos.z + Math.sin(angle) * r;
+
+      vel[idx * 3] = Math.cos(angle) * (0.8 + Math.random() * 0.6);
+      vel[idx * 3 + 1] = 0.35 + Math.random() * 0.35;
+      vel[idx * 3 + 2] = Math.sin(angle) * (0.8 + Math.random() * 0.6);
+    }
+  }
+
+  private updateFootstepDust(delta: number) {
+    const pos = this.footstepPositions;
+    const vel = this.footstepVel;
+    const life = this.footstepLife;
+
+    let hasActive = false;
+    for (let i = 0; i < 50; i++) {
+      if (life[i] > 0) {
+        life[i] -= delta;
+        pos[i * 3] += vel[i * 3] * delta;
+        pos[i * 3 + 1] += vel[i * 3 + 1] * delta;
+        pos[i * 3 + 2] += vel[i * 3 + 2] * delta;
+        hasActive = true;
+      } else {
+        pos[i * 3 + 1] = -100;
+      }
+    }
+
+    if (hasActive && this.footstepDustParticles.geometry.attributes.position) {
+      this.footstepDustParticles.geometry.attributes.position.needsUpdate = true;
+    }
+  }
+
+  // Jump Action Trigger
+  public jump(skillBonus: number = 0) {
+    if (this.isGrounded) {
+      this.currentAction = 'JUMP';
+      this.jumpVelocity = 11.8 * (1 + skillBonus * 0.25);
+      this.isGrounded = false;
+      this.slideTimer = 0;
+    }
+  }
+
+  // Slide Action Trigger
+  public slide(skillBonus: number = 0) {
+    this.currentAction = 'SLIDE';
+    this.slideDuration = 0.85 * (1 + skillBonus * 0.3);
+    this.slideTimer = this.slideDuration;
+
+    if (!this.isGrounded) {
+      this.jumpVelocity = -24; // Fast athletic drop into slide
+    }
+  }
+
+  public changeLane(direction: -1 | 1) {
+    const currentLaneIdx = Math.round(this.targetLaneX / 2.5);
+    const nextLaneIdx = Math.max(-1, Math.min(1, currentLaneIdx + direction));
+    this.targetLaneX = nextLaneIdx * 2.5;
+  }
+
   public moveLeft() {
-    if (this.currentAction === 'CRASH') return;
-    const currentLaneIndex = Math.round(this.targetLaneX / 2.5);
-    // Moving Left moves towards negative X (screen left)
-    if (currentLaneIndex > -1) {
-      this.targetLaneX = (currentLaneIndex - 1) * 2.5;
-    }
+    this.changeLane(-1);
   }
 
   public moveRight() {
-    if (this.currentAction === 'CRASH') return;
-    const currentLaneIndex = Math.round(this.targetLaneX / 2.5);
-    // Moving Right moves towards positive X (screen right)
-    if (currentLaneIndex < 1) {
-      this.targetLaneX = (currentLaneIndex + 1) * 2.5;
-    }
+    this.changeLane(1);
   }
 
-  public jump(jumpSkillBonus: number = 0) {
-    if (this.currentAction === 'CRASH') return;
-    if (this.isGrounded) {
-      this.isGrounded = false;
-      const baseJumpVel = 13.2;
-      this.jumpVelocity = baseJumpVel * (1 + jumpSkillBonus);
-      this.currentAction = 'JUMP';
-    }
+  /**
+   * Main game loop update method called by GameEngine
+   */
+  public update(
+    delta: number,
+    runSpeed: number,
+    _balanceSkill: number = 1.0,
+    _jumpBonus: number = 0,
+    _slideBonus: number = 0
+  ) {
+    // Smooth lane lateral interpolation with critically damped easing (subway smoothness)
+    this.laneX = THREE.MathUtils.lerp(this.laneX, this.targetLaneX, delta * 14.0);
+    this.group.position.x = this.laneX;
+
+    const speedRatio = Math.max(0.5, Math.min(2.5, runSpeed / 14.0));
+    this.updateAnimation(delta, runSpeed, speedRatio);
   }
 
-  public slide(slideSkillBonus: number = 0) {
-    if (this.currentAction === 'CRASH') return;
-    if (!this.isGrounded) {
-      // Fast drop down
-      this.jumpVelocity = -30;
-    }
-    this.currentAction = 'SLIDE';
-    this.slideDuration = 0.85 * (1 + slideSkillBonus);
-    this.slideTimer = this.slideDuration;
+  public crash() {
+    this.currentAction = 'CRASH';
   }
 
   public resetToStart() {
-    this.group.position.set(0, 0, 0);
-    this.laneX = 0;
-    this.targetLaneX = 0;
+    this.currentAction = 'RUN';
+    this.animTime = 0;
+    this.gaitPhase = 0;
     this.jumpY = 0;
     this.jumpVelocity = 0;
     this.isGrounded = true;
-    this.currentAction = 'RUN';
-    this.shieldMesh.visible = false;
-    this.magnetAura.visible = false;
-    this.turboJetMesh.visible = false;
+    this.slideTimer = 0;
+    this.landingReboundTime = 0;
+    this.laneX = 0;
+    this.targetLaneX = 0;
+    this.rollAngle = 0;
+    this.group.position.set(0, 0, 0);
+    this.group.rotation.set(0, 0, 0);
+    const baseScale = (this.appearance.heightMeters / 1.78) * 1.08;
+    this.group.scale.set(baseScale, baseScale, baseScale);
   }
 }
 
-// Backward-compatible alias for codebase compatibility
-export { BassamCharacter as HammoudiCharacter };
+// Backwards-compatible export aliases
+export {
+  BassamCharacter as HammoudiCharacter,
+  BassamCharacter as GameCharacter,
+  HighPrecisionTextureEngine as HammoudiTextureGenerator,
+  HighPrecisionTextureEngine as BassamTextureGenerator,
+};

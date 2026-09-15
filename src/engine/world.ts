@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { BiomeType, PowerUpType, WeatherType } from '../types';
-import { ObstacleManager } from './obstacles';
+import { ObstacleManager, ObstacleType } from './obstacles';
 import { audioManager } from './audio';
 
 export interface TrackChunk {
@@ -52,7 +52,7 @@ export const ALL_BIOMES: BiomeType[] = [
   'MAYSAN',
   'DHI_QAR',
   'MUTHANNA',
-  'QADISIYYAH',
+  'DIWANIYAH',
 ];
 
 export function getRandomBiome(excludeBiome?: BiomeType): BiomeType {
@@ -69,7 +69,7 @@ export class WorldManager {
   public currentBiome: BiomeType = getRandomBiome();
   public currentWeather: WeatherType = 'SUNNY_MORNING';
   public chunkLength: number = 50;
-  public visibleChunks: number = 8; // ~400 meters view distance
+  public visibleChunks: number = 5; // Optimized ~250m view distance to keep phone cool
   public nextChunkZ: number = 0;
 
   // Environment lights
@@ -88,24 +88,24 @@ export class WorldManager {
   private targetWeatherProfile: WeatherProfile;
   private weatherProfiles: Record<WeatherType, WeatherProfile>;
 
-  // Rain & Splash Particle System
+  // Rain & Splash Particle System (Optimized for smooth performance)
   private rainParticles: THREE.Points | null = null;
   private rainPositions: Float32Array | null = null;
   private rainVelocities: Float32Array | null = null;
-  private rainCount: number = 300;
+  private rainCount: number = 110;
   private rainMat: THREE.PointsMaterial | null = null;
   private currentRainOpacity: number = 0;
 
   // Ground Splash Particles
   private splashParticles: THREE.Points | null = null;
   private splashPositions: Float32Array | null = null;
-  private splashCount: number = 40;
+  private splashCount: number = 20;
 
-  // Dust & Sandstorm Particle System (Baghdad Dust Storm & Golden Sunset Haze)
+  // Dust & Sandstorm Particle System
   private dustParticles: THREE.Points | null = null;
   private dustPositions: Float32Array | null = null;
   private dustVelocities: Float32Array | null = null;
-  private dustCount: number = 220;
+  private dustCount: number = 80;
   private dustMat: THREE.PointsMaterial | null = null;
   private currentDustOpacity: number = 0;
 
@@ -124,6 +124,20 @@ export class WorldManager {
   private puddleGeo: THREE.PlaneGeometry;
   public puddleMat: THREE.MeshStandardMaterial;
   private streetGlowMat: THREE.MeshBasicMaterial;
+
+  // Modern Architecture & Nature Materials
+  private glassTowerMat: THREE.MeshStandardMaterial;
+  private darkGlassMat: THREE.MeshStandardMaterial;
+  private modernWhiteMat: THREE.MeshStandardMaterial;
+  private modernWoodMat: THREE.MeshStandardMaterial;
+  private windowGlowMat: THREE.MeshBasicMaterial;
+  private beaconMat: THREE.MeshBasicMaterial;
+  private flowerPlanterMat: THREE.MeshStandardMaterial;
+  private flowerFoliageMat: THREE.MeshStandardMaterial;
+  private flowerRedMat: THREE.MeshStandardMaterial;
+  private flowerYellowMat: THREE.MeshStandardMaterial;
+  private flowerPinkMat: THREE.MeshStandardMaterial;
+  private gardenTreeCanopyMat: THREE.MeshStandardMaterial;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -239,6 +253,24 @@ export class WorldManager {
         roadRoughness: 0.85,
         roadMetalness: 0.08,
       },
+      SNOW_FLURRY: {
+        nameAr: 'ثلوج شتوية بيضاء',
+        skyColor: new THREE.Color(0xdbeafe),
+        fogColor: new THREE.Color(0xeff6ff),
+        fogNear: 60,
+        fogFar: 250,
+        sunColor: new THREE.Color(0xffffff),
+        sunIntensity: 1.1,
+        sunPos: new THREE.Vector3(12, 35, 15),
+        hemiSkyColor: new THREE.Color(0xe0f2fe),
+        hemiGroundColor: new THREE.Color(0x94a3b8),
+        hemiIntensity: 0.75,
+        ambientColor: new THREE.Color(0xf8fafc),
+        ambientIntensity: 0.45,
+        rainIntensity: 0.4,
+        roadRoughness: 0.3,
+        roadMetalness: 0.1,
+      },
       KARRADA_NIGHT: {
         nameAr: 'أضواء النيون الليلية',
         skyColor: new THREE.Color(0x090d16),
@@ -319,6 +351,22 @@ export class WorldManager {
       new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.9 }), // Heritage brick
     ];
 
+    // Modern Skyscrapers & Villas Materials
+    this.glassTowerMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.15, metalness: 0.85 });
+    this.darkGlassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2, metalness: 0.75 });
+    this.modernWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 });
+    this.modernWoodMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.85 });
+    this.windowGlowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+    this.beaconMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+
+    // Trees & Flowers Materials
+    this.flowerPlanterMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+    this.flowerFoliageMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.8 });
+    this.flowerRedMat = new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.6 });
+    this.flowerYellowMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.6 });
+    this.flowerPinkMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.6 });
+    this.gardenTreeCanopyMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.7 });
+
     // Wet Puddle Reflection Material (Mirror-like water surface reflecting skies, lamps, & neon)
     this.puddleGeo = new THREE.PlaneGeometry(2.4, 3.6, 6, 6);
     this.puddleGeo.rotateX(-Math.PI / 2);
@@ -330,11 +378,11 @@ export class WorldManager {
       opacity: 0.88,
     });
 
-    // Street Light Ground Glow Pools
+    // High-Clarity Street Light Ground Glow Pools (إضاءة شوارع متطورة وعالية الوضوح)
     this.streetGlowMat = new THREE.MeshBasicMaterial({
-      color: 0xfef08a,
+      color: 0xfff3a0,
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.38,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -433,67 +481,8 @@ export class WorldManager {
   // ==================== BIOME CONFIGURATION ====================
   public setBiome(biome: BiomeType) {
     this.currentBiome = biome;
-    
-    // Match each Iraqi Governorate with its authentic atmospheric weather
-    switch (biome) {
-      case 'BAGHDAD':
-        this.setWeather('SUNNY_MORNING');
-        break;
-      case 'BASRA':
-        this.setWeather('GOLDEN_SUNSET');
-        break;
-      case 'NINEVEH':
-        this.setWeather('LIGHT_RAIN_MIST');
-        break;
-      case 'ERBIL':
-        this.setWeather('SUNNY_MORNING');
-        break;
-      case 'SULAYMANIYAH':
-        this.setWeather('LIGHT_RAIN_MIST');
-        break;
-      case 'DUHOK':
-        this.setWeather('LIGHT_RAIN_MIST');
-        break;
-      case 'KIRKUK':
-        this.setWeather('KARRADA_NIGHT');
-        break;
-      case 'BABYLON':
-        this.setWeather('GOLDEN_SUNSET');
-        break;
-      case 'KARBALA':
-        this.setWeather('KARRADA_NIGHT');
-        break;
-      case 'NAJAF':
-        this.setWeather('NOON_BRIGHT');
-        break;
-      case 'ANBAR':
-        this.setWeather('BAGHDAD_DUST_STORM');
-        break;
-      case 'DIYALA':
-        this.setWeather('SUNNY_MORNING');
-        break;
-      case 'SALADIN':
-        this.setWeather('NOON_BRIGHT');
-        break;
-      case 'WASIT':
-        this.setWeather('GOLDEN_SUNSET');
-        break;
-      case 'MAYSAN':
-        this.setWeather('LIGHT_RAIN_MIST');
-        break;
-      case 'DHI_QAR':
-        this.setWeather('GOLDEN_SUNSET');
-        break;
-      case 'MUTHANNA':
-        this.setWeather('NOON_BRIGHT');
-        break;
-      case 'QADISIYYAH':
-        this.setWeather('SUNNY_MORNING');
-        break;
-      default:
-        this.setWeather('SUNNY_MORNING');
-        break;
-    }
+    // Weather is dynamically driven every 1000m by gameEngine.getWeatherForDistance
+    // to provide continuous variety across all runs as requested by the player.
   }
 
   // ==================== PROCEDURAL CHUNK CREATION ====================
@@ -532,46 +521,49 @@ export class WorldManager {
     swR.receiveShadow = true;
     group.add(swL, swR);
 
-    // 4. Palm Trees along sidewalks (Spaced cleanly for high frame rates)
-    const palmInterval = 30;
-    for (let z = -this.chunkLength / 2 + 10; z < this.chunkLength / 2; z += palmInterval) {
-      const palmL = this.createPalmTree();
-      palmL.position.set(-6.5, 0.25, z);
-      const palmR = this.createPalmTree();
-      palmR.position.set(6.5, 0.25, z + 6);
-      group.add(palmL, palmR);
+    // 4. Modern Sidewalk Landscaping: Alternating Palms & Lush Flowering Trees
+    const palmInterval = 25;
+    for (let z = -this.chunkLength / 2 + 8; z < this.chunkLength / 2; z += palmInterval) {
+      if (Math.random() > 0.4) {
+        const treeL = this.createLushGardenTree();
+        treeL.position.set(-6.6, 0.25, z);
+        const treeR = this.createPalmTree();
+        treeR.position.set(6.6, 0.25, z + 5);
+        group.add(treeL, treeR);
+      } else {
+        const palmL = this.createPalmTree();
+        palmL.position.set(-6.6, 0.25, z);
+        const treeR = this.createLushGardenTree();
+        treeR.position.set(6.6, 0.25, z + 5);
+        group.add(palmL, treeR);
+      }
     }
 
-    // 5. Procedural Baghdad Architectural Buildings (Spaced elegantly)
+    // Modern Flowerbeds & Planters along both sidewalks
+    const planterZOffsets = [-15, 10];
+    for (const pZ of planterZOffsets) {
+      const planterL = this.createFlowerPlanter();
+      planterL.position.set(-5.6, 0.25, pZ);
+      const planterR = this.createFlowerPlanter();
+      planterR.position.set(5.6, 0.25, pZ);
+      group.add(planterL, planterR);
+    }
+
+    // 5. Developed Architecture: Modern Skyscrapers & High-End Villas
     const buildingCount = 2;
     const bldgSpacing = this.chunkLength / buildingCount;
     for (let i = 0; i < buildingCount; i++) {
       const z = -this.chunkLength / 2 + (i + 0.5) * bldgSpacing;
-      // Left side building
-      const bldgL = this.createBaghdadBuilding(biome);
-      bldgL.position.set(-13 - Math.random() * 2, 0, z);
+      // Left side building (Skyscraper or Modern Villa)
+      const bldgL = this.createDevelopedBuilding(biome);
+      bldgL.position.set(-14.5 - Math.random() * 2, 0, z);
       // Right side building
-      const bldgR = this.createBaghdadBuilding(biome);
-      bldgR.position.set(13 + Math.random() * 2, 0, z);
+      const bldgR = this.createDevelopedBuilding(biome);
+      bldgR.position.set(14.5 + Math.random() * 2, 0, z);
       group.add(bldgL, bldgR);
     }
 
-    // 6. Street Lamps with glowing light cones & ground reflection pools
-    const lampL = this.createStreetLamp();
-    lampL.position.set(-5.2, 0.25, 0);
-    const lampR = this.createStreetLamp();
-    lampR.position.set(5.2, 0.25, 0);
-    lampR.rotation.y = Math.PI;
-    group.add(lampL, lampR);
-
-    // Warm street light reflection glow pools on the ground
-    const glowPoolL = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 5.0), this.streetGlowMat);
-    glowPoolL.rotateX(-Math.PI / 2);
-    glowPoolL.position.set(-3.5, 0.015, 0);
-    const glowPoolR = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 5.0), this.streetGlowMat);
-    glowPoolR.rotateX(-Math.PI / 2);
-    glowPoolR.position.set(3.5, 0.015, 0);
-    group.add(glowPoolL, glowPoolR);
+    // 6. Roads are clean and unobstructed (Side lighting removed as requested)
 
     // 7. Reflective Wet Asphalt Puddles (placed in lanes with natural variation)
     const puddleLanes = [-2.5, 0, 2.5];
@@ -623,50 +615,448 @@ export class WorldManager {
 
   private createStreetLamp(): THREE.Group {
     const lamp = new THREE.Group();
-    const poleGeo = new THREE.CylinderGeometry(0.06, 0.08, 5.5, 8);
-    const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 });
+    // Modern architectural graphite pole
+    const poleGeo = new THREE.CylinderGeometry(0.08, 0.12, 6.0, 10);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.3 });
     const pole = new THREE.Mesh(poleGeo, poleMat);
-    pole.position.y = 2.75;
+    pole.position.y = 3.0;
     pole.castShadow = true;
 
-    const armGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 8);
-    const arm = new THREE.Mesh(armGeo, poleMat);
-    arm.position.set(0.5, 5.4, 0);
-    arm.rotation.z = -Math.PI / 3;
+    // Curved luminaire arch
+    const archGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.6, 8);
+    const arch = new THREE.Mesh(archGeo, poleMat);
+    arch.position.set(0.65, 5.8, 0);
+    arch.rotation.z = -Math.PI / 3.2;
 
-    const headGeo = new THREE.BoxGeometry(0.3, 0.1, 0.2);
-    const headMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.set(0.9, 5.2, 0);
+    // Modern LED Luminaire Head (Slim aerofoil)
+    const headGeo = new THREE.BoxGeometry(0.7, 0.12, 0.32);
+    const head = new THREE.Mesh(headGeo, poleMat);
+    head.position.set(1.25, 5.5, 0);
 
-    lamp.add(pole, arm, head);
+    // Ultra-bright LED Light emitter bar (illuminating the asphalt)
+    const ledBarGeo = new THREE.BoxGeometry(0.55, 0.03, 0.22);
+    const ledBarMat = new THREE.MeshBasicMaterial({ color: 0xfffbeb });
+    const ledBar = new THREE.Mesh(ledBarGeo, ledBarMat);
+    ledBar.position.set(1.25, 5.43, 0);
+
+    // Volumetric Soft Light Cone (conical illumination projecting downwards with clear visibility)
+    const coneGeo = new THREE.ConeGeometry(2.4, 5.2, 16, 1, true);
+    const coneMat = new THREE.MeshBasicMaterial({
+      color: 0xffedd5,
+      transparent: true,
+      opacity: 0.12,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const lightCone = new THREE.Mesh(coneGeo, coneMat);
+    lightCone.position.set(1.25, 2.7, 0);
+
+    lamp.add(pole, arch, head, ledBar, lightCone);
     return lamp;
   }
 
-  private createBaghdadBuilding(biome: BiomeType): THREE.Group {
-    const bldg = new THREE.Group();
-    const width = 6 + Math.random() * 4;
-    const depth = 8 + Math.random() * 4;
-    const height = 10 + Math.random() * 20;
+  // Sidewalk Flower Planters with Vibrant Blossom Clusters (أحواض زهور وورود)
+  private createFlowerPlanter(): THREE.Group {
+    const planter = new THREE.Group();
 
-    const mat = this.buildingMaterials[Math.floor(Math.random() * this.buildingMaterials.length)];
-    const geo = new THREE.BoxGeometry(width, height, depth);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = height / 2;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    bldg.add(mesh);
+    // Dark Stone Planter Box
+    const boxGeo = new THREE.BoxGeometry(0.7, 0.4, 2.4);
+    const box = new THREE.Mesh(boxGeo, this.flowerPlanterMat);
+    box.position.y = 0.2;
+    box.castShadow = true;
+    planter.add(box);
 
-    // Traditional Shanashil / Baghdad Balcony Accents
-    if (Math.random() > 0.4) {
-      const shanashilGeo = new THREE.BoxGeometry(width * 0.7, 2.5, 1.2);
-      const shanashilMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
-      const shanashil = new THREE.Mesh(shanashilGeo, shanashilMat);
-      shanashil.position.set(width * 0.45, height * 0.45, 0);
-      bldg.add(shanashil);
+    // Soil & Dense Green Hedge
+    const hedgeGeo = new THREE.BoxGeometry(0.62, 0.35, 2.3);
+    const hedge = new THREE.Mesh(hedgeGeo, this.flowerFoliageMat);
+    hedge.position.y = 0.38;
+    planter.add(hedge);
+
+    // Colorful Flower Clusters (Roses, Marigolds, Petunias)
+    const flowerGeo = new THREE.SphereGeometry(0.12, 6, 6);
+    const colors = [this.flowerRedMat, this.flowerYellowMat, this.flowerPinkMat];
+    for (let i = 0; i < 6; i++) {
+      const flowerMesh = new THREE.Mesh(flowerGeo, colors[i % colors.length]);
+      flowerMesh.position.set(
+        (Math.random() - 0.5) * 0.4,
+        0.58 + Math.random() * 0.08,
+        -0.8 + i * 0.32
+      );
+      planter.add(flowerMesh);
     }
 
-    return bldg;
+    return planter;
+  }
+
+  // Lush Urban Trees with Round Canopies and Blossoms (أشجار وورود)
+  private createLushGardenTree(): THREE.Group {
+    const tree = new THREE.Group();
+
+    // Tree Trunk
+    const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 4.5, 8);
+    const trunk = new THREE.Mesh(trunkGeo, this.palmTrunkMat);
+    trunk.position.y = 2.25;
+    trunk.castShadow = true;
+    tree.add(trunk);
+
+    // Main Crown
+    const isFlowering = Math.random() > 0.5;
+    const crownMat = isFlowering ? this.flowerPinkMat : this.gardenTreeCanopyMat;
+
+    const crownGeo = new THREE.SphereGeometry(1.6, 8, 8);
+    const crown1 = new THREE.Mesh(crownGeo, crownMat);
+    crown1.position.y = 4.8;
+    crown1.castShadow = true;
+    tree.add(crown1);
+
+    const crown2 = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 8), crownMat);
+    crown2.position.set(0.4, 5.6, -0.3);
+    crown2.castShadow = true;
+    tree.add(crown2);
+
+    return tree;
+  }
+
+  // 1. Modern High-Rise Skyscraper with Stepped Setbacks, Corner Columns & Crown Spire
+  private createSkyscraper(): THREE.Group {
+    const tower = new THREE.Group();
+    const width = 12 + Math.random() * 3;
+    const depth = 12 + Math.random() * 3;
+    const totalHeight = 55 + Math.random() * 35; // 55m to 90m tall
+
+    const tier1H = totalHeight * 0.48;
+    const tier2H = totalHeight * 0.34;
+    const tier3H = totalHeight * 0.18;
+
+    // --- Tier 1 (Base Podium) ---
+    const t1Geo = new THREE.BoxGeometry(width, tier1H, depth);
+    const t1 = new THREE.Mesh(t1Geo, this.glassTowerMat);
+    t1.position.y = tier1H / 2;
+    t1.castShadow = true;
+    t1.receiveShadow = true;
+    tower.add(t1);
+
+    // Sculpted Corner Aerodynamic Columns for Tier 1
+    const colGeo1 = new THREE.CylinderGeometry(0.55, 0.55, tier1H, 10);
+    const halfW = width / 2;
+    const halfD = depth / 2;
+    const corners = [
+      [-halfW, -halfD],
+      [halfW, -halfD],
+      [-halfW, halfD],
+      [halfW, halfD],
+    ];
+    corners.forEach(([cx, cz]) => {
+      const col = new THREE.Mesh(colGeo1, this.modernWhiteMat);
+      col.position.set(cx, tier1H / 2, cz);
+      tower.add(col);
+    });
+
+    // Tier 1 Glowing Floor Rings
+    const bandCount1 = Math.floor(tier1H / 5.5);
+    const bandGeo1 = new THREE.BoxGeometry(width * 1.02, 0.4, depth * 1.02);
+    for (let i = 1; i <= bandCount1; i++) {
+      const band = new THREE.Mesh(bandGeo1, this.windowGlowMat);
+      band.position.y = i * 5.5;
+      tower.add(band);
+    }
+
+    // --- Tier 2 (Mid Tower Setback) ---
+    const w2 = width * 0.82;
+    const d2 = depth * 0.82;
+    const t2Geo = new THREE.BoxGeometry(w2, tier2H, d2);
+    const t2 = new THREE.Mesh(t2Geo, this.glassTowerMat);
+    t2.position.y = tier1H + tier2H / 2;
+    t2.castShadow = true;
+    tower.add(t2);
+
+    // Tier 2 White Corner Columns
+    const colGeo2 = new THREE.CylinderGeometry(0.45, 0.45, tier2H, 10);
+    const halfW2 = w2 / 2;
+    const halfD2 = d2 / 2;
+    [
+      [-halfW2, -halfD2],
+      [halfW2, -halfD2],
+      [-halfW2, halfD2],
+      [halfW2, halfD2],
+    ].forEach(([cx, cz]) => {
+      const col = new THREE.Mesh(colGeo2, this.modernWhiteMat);
+      col.position.set(cx, tier1H + tier2H / 2, cz);
+      tower.add(col);
+    });
+
+    // Tier 2 Floor Bands
+    const bandCount2 = Math.floor(tier2H / 5.5);
+    const bandGeo2 = new THREE.BoxGeometry(w2 * 1.025, 0.38, d2 * 1.025);
+    for (let i = 1; i <= bandCount2; i++) {
+      const band = new THREE.Mesh(bandGeo2, this.windowGlowMat);
+      band.position.y = tier1H + i * 5.5;
+      tower.add(band);
+    }
+
+    // --- Tier 3 (Crown Penthouse) ---
+    const w3 = w2 * 0.78;
+    const d3 = d2 * 0.78;
+    const t3Geo = new THREE.BoxGeometry(w3, tier3H, d3);
+    const t3 = new THREE.Mesh(t3Geo, this.modernWhiteMat);
+    t3.position.y = tier1H + tier2H + tier3H / 2;
+    t3.castShadow = true;
+    tower.add(t3);
+
+    // Glowing Crown Light Rings
+    const crownRingGeo = new THREE.BoxGeometry(w3 * 1.04, 0.65, d3 * 1.04);
+    const crownRing = new THREE.Mesh(crownRingGeo, this.windowGlowMat);
+    crownRing.position.y = tier1H + tier2H + tier3H * 0.75;
+    tower.add(crownRing);
+
+    // Multi-tier Rooftop Spire & Warning Beacon
+    const spireY = tier1H + tier2H + tier3H;
+    const spireGeo = new THREE.CylinderGeometry(0.08, 0.25, 11, 8);
+    const spire = new THREE.Mesh(spireGeo, this.modernWhiteMat);
+    spire.position.set(0, spireY + 5.5, 0);
+    tower.add(spire);
+
+    const beaconGeo = new THREE.SphereGeometry(0.45, 8, 8);
+    const beacon = new THREE.Mesh(beaconGeo, this.beaconMat);
+    beacon.position.set(0, spireY + 11.2, 0);
+    tower.add(beacon);
+
+    return tower;
+  }
+
+  // 2. Modern Contemporary White Villa with Pitched Roofs, Curved Balconies & Colonnades
+  private createModernVilla(): THREE.Group {
+    const villa = new THREE.Group();
+    const width = 13 + Math.random() * 3;
+    const depth = 11 + Math.random() * 3;
+    const baseHeight = 4.8;
+
+    // Ground Floor: Pure Crisp Architectural White (بيضاء بالكامل)
+    const groundGeo = new THREE.BoxGeometry(width, baseHeight, depth);
+    const ground = new THREE.Mesh(groundGeo, this.modernWhiteMat);
+    ground.position.y = baseHeight / 2;
+    ground.castShadow = true;
+    ground.receiveShadow = true;
+    villa.add(ground);
+
+    // Classical Sculpted White Entrance Pillars (أعمدة بيضاء منحوتة وليست مكعبة)
+    const pillarGeo = new THREE.CylinderGeometry(0.3, 0.35, baseHeight, 12);
+    const p1 = new THREE.Mesh(pillarGeo, this.modernWhiteMat);
+    p1.position.set(-width * 0.32, baseHeight / 2, depth * 0.5 + 0.5);
+    const p2 = new THREE.Mesh(pillarGeo, this.modernWhiteMat);
+    p2.position.set(-width * 0.12, baseHeight / 2, depth * 0.5 + 0.5);
+    villa.add(p1, p2);
+
+    // Cantilevered Upper Floor (Pure White)
+    const upperGeo = new THREE.BoxGeometry(width * 0.88, baseHeight, depth * 0.92);
+    const upper = new THREE.Mesh(upperGeo, this.modernWhiteMat);
+    upper.position.set(width * 0.06, baseHeight * 1.5, 0);
+    upper.castShadow = true;
+    upper.receiveShadow = true;
+    villa.add(upper);
+
+    // Sculpted Sloped Architectural Roof (سقف معماري مائل أبيض أنيق وليس مجرد مكعب)
+    const roofWidth = width * 0.94;
+    const roofDepth = depth * 0.96;
+    const roofGeo = new THREE.ConeGeometry(roofWidth * 0.72, 3.2, 4);
+    roofGeo.rotateY(Math.PI / 4);
+    const roof = new THREE.Mesh(roofGeo, this.modernWhiteMat);
+    roof.position.set(width * 0.06, baseHeight * 2.0 + 1.6, 0);
+    roof.scale.set(1.0, 1.0, roofDepth / roofWidth);
+    roof.castShadow = true;
+    villa.add(roof);
+
+    // Curved Sculpted Balcony with Glass Balustrade
+    const balcBaseGeo = new THREE.CylinderGeometry(width * 0.32, width * 0.32, 0.3, 16, 1, false, 0, Math.PI);
+    balcBaseGeo.rotateY(-Math.PI / 2);
+    const balcBase = new THREE.Mesh(balcBaseGeo, this.modernWhiteMat);
+    balcBase.position.set(width * 0.2, baseHeight, depth * 0.46);
+    villa.add(balcBase);
+
+    const glassRailGeo = new THREE.CylinderGeometry(width * 0.31, width * 0.31, 0.8, 16, 1, true, 0, Math.PI);
+    glassRailGeo.rotateY(-Math.PI / 2);
+    const glassRail = new THREE.Mesh(glassRailGeo, this.glassTowerMat);
+    glassRail.position.set(width * 0.2, baseHeight + 0.45, depth * 0.46);
+    villa.add(glassRail);
+
+    // Panoramic Illuminated French Windows
+    const windowGeo = new THREE.BoxGeometry(width * 0.38, baseHeight * 0.65, 0.35);
+    const windowMesh = new THREE.Mesh(windowGeo, this.windowGlowMat);
+    windowMesh.position.set(width * 0.2, baseHeight * 1.48, depth * 0.47);
+    villa.add(windowMesh);
+
+    // Elegant White Architectural Sunshades (Louvers)
+    for (let l = 0; l < 4; l++) {
+      const louver = new THREE.Mesh(new THREE.BoxGeometry(width * 0.42, 0.1, 0.6), this.modernWhiteMat);
+      louver.position.set(width * 0.2, baseHeight * 1.25 + l * 0.55, depth * 0.49);
+      villa.add(louver);
+    }
+
+    return villa;
+  }
+
+  // 3. Distinctive Modern Restaurant & Cafe with Pure White Stucco & Warm Terraces
+  private createModernRestaurant(): THREE.Group {
+    const restaurant = new THREE.Group();
+    const width = 13.5;
+    const height = 9.0;
+    const depth = 11.0;
+
+    // Main Building Structure: Pure Crisp Architectural White (بيضاء بالكامل)
+    const mainGeo = new THREE.BoxGeometry(width, height, depth);
+    const mainMesh = new THREE.Mesh(mainGeo, this.modernWhiteMat);
+    mainMesh.position.y = height / 2;
+    mainMesh.castShadow = true;
+    mainMesh.receiveShadow = true;
+    restaurant.add(mainMesh);
+
+    // Architectural Sloped White Parapet Crown (محدد معماري علوي أنيق)
+    const parapetGeo = new THREE.BoxGeometry(width * 1.05, 0.8, depth * 1.05);
+    const parapet = new THREE.Mesh(parapetGeo, this.modernWhiteMat);
+    parapet.position.y = height + 0.4;
+    restaurant.add(parapet);
+
+    // Warm Illuminated Floor-to-Ceiling Dining Picture Window
+    const windowGeo = new THREE.BoxGeometry(width * 0.65, 3.8, 0.4);
+    const windowMesh = new THREE.Mesh(windowGeo, this.windowGlowMat);
+    windowMesh.position.set(-width * 0.12, 2.8, depth * 0.51);
+    restaurant.add(windowMesh);
+
+    // Pure White Sculpted Facade Framing
+    const frameGeo = new THREE.BoxGeometry(width * 0.70, 4.2, 0.3);
+    const frame = new THREE.Mesh(frameGeo, this.modernWhiteMat);
+    frame.position.set(-width * 0.12, 2.8, depth * 0.49);
+    restaurant.add(frame);
+
+    // Outdoor Dining Terrace (Flushing out toward sidewalk)
+    const terraceGeo = new THREE.BoxGeometry(width * 0.75, 0.25, 3.8);
+    const terraceMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
+    const terrace = new THREE.Mesh(terraceGeo, terraceMat);
+    terrace.position.set(-width * 0.1, 0.125, depth * 0.5 + 1.9);
+    terrace.receiveShadow = true;
+    restaurant.add(terrace);
+
+    // Outdoor Dining Tables
+    const tableMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, metalness: 0.4 });
+    const table1 = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.75, 12), tableMat);
+    table1.position.set(-width * 0.28, 0.5, depth * 0.5 + 1.8);
+    const table2 = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.75, 12), tableMat);
+    table2.position.set(width * 0.08, 0.5, depth * 0.5 + 1.8);
+    restaurant.add(table1, table2);
+
+    // Modern Cafe Terrace Parasol / Umbrella
+    const umbrellaPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 8), tableMat);
+    umbrellaPole.position.set(-width * 0.28, 1.3, depth * 0.5 + 1.8);
+    const umbrellaCanopy = new THREE.Mesh(
+      new THREE.ConeGeometry(1.4, 0.55, 12),
+      new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.6 }) // Vibrant bistro red canopy
+    );
+    umbrellaCanopy.position.set(-width * 0.28, 2.4, depth * 0.5 + 1.8);
+    restaurant.add(umbrellaPole, umbrellaCanopy);
+
+    // Distinctive Restaurant Marquee Signboard (لوحة مطعم عصرية مضيئة)
+    const signBoardGeo = new THREE.BoxGeometry(width * 0.65, 1.1, 0.35);
+    const signBoard = new THREE.Mesh(signBoardGeo, this.modernWhiteMat);
+    signBoard.position.set(-width * 0.12, 5.4, depth * 0.52);
+
+    // Glowing Neon Restaurant Sign Text Plate
+    const signGlowGeo = new THREE.BoxGeometry(width * 0.58, 0.55, 0.4);
+    const signGlowMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b }); // Golden Amber Neon
+    const signGlow = new THREE.Mesh(signGlowGeo, signGlowMat);
+    signGlow.position.set(-width * 0.12, 5.4, depth * 0.54);
+    restaurant.add(signBoard, signGlow);
+
+    // Striped Bistro Awning over Entrance
+    const awningGeo = new THREE.BoxGeometry(4.2, 0.12, 1.6);
+    const awningMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 });
+    const awning = new THREE.Mesh(awningGeo, awningMat);
+    awning.position.set(width * 0.32, 3.4, depth * 0.5 + 0.7);
+    awning.rotation.x = 0.25;
+    restaurant.add(awning);
+
+    return restaurant;
+  }
+
+  // 4. Distinctive Modern Boutique / Retail Shop with Pure White Facade & Glass Showcase
+  private createModernShop(): THREE.Group {
+    const shop = new THREE.Group();
+    const width = 12.5;
+    const height = 8.5;
+    const depth = 10.5;
+
+    // Main Architectural Structure: Pure Crisp Architectural White
+    const mainGeo = new THREE.BoxGeometry(width, height, depth);
+    const mainMesh = new THREE.Mesh(mainGeo, this.modernWhiteMat);
+    mainMesh.position.y = height / 2;
+    mainMesh.castShadow = true;
+    mainMesh.receiveShadow = true;
+    shop.add(mainMesh);
+
+    // Architectural Sloped Crown Moulding
+    const crownMouldGeo = new THREE.BoxGeometry(width * 1.04, 0.6, depth * 1.04);
+    const crownMould = new THREE.Mesh(crownMouldGeo, this.modernWhiteMat);
+    crownMould.position.y = height + 0.3;
+    shop.add(crownMould);
+
+    // Expansive Illuminated Showcase Display Storefront
+    const displayWindowGeo = new THREE.BoxGeometry(width * 0.72, 3.6, 0.4);
+    const displayWindow = new THREE.Mesh(displayWindowGeo, this.windowGlowMat);
+    displayWindow.position.set(-width * 0.08, 2.4, depth * 0.51);
+    shop.add(displayWindow);
+
+    // Interior Merchandise Display Pedestals inside showcase
+    const pedestalMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.5 });
+    const ped1 = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 1.1, 10), pedestalMat);
+    ped1.position.set(-width * 0.25, 1.1, depth * 0.5 + 0.1);
+    const ped2 = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 1.4, 10), pedestalMat);
+    ped2.position.set(width * 0.1, 1.25, depth * 0.5 + 0.1);
+    shop.add(ped1, ped2);
+
+    // Distinctive Illuminated Store Marquee Blade
+    const signBladeGeo = new THREE.BoxGeometry(width * 0.75, 1.0, 0.35);
+    const signBlade = new THREE.Mesh(signBladeGeo, this.modernWhiteMat);
+    signBlade.position.set(-width * 0.08, 4.8, depth * 0.53);
+
+    // Glowing Electric-Cyan Neon Brand Banner
+    const neonBrandGeo = new THREE.BoxGeometry(width * 0.68, 0.5, 0.4);
+    const neonBrandMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 }); // Vibrant Electric Cyan
+    const neonBrand = new THREE.Mesh(neonBrandGeo, neonBrandMat);
+    neonBrand.position.set(-width * 0.08, 4.8, depth * 0.55);
+    shop.add(signBlade, neonBrand);
+
+    // Sleek Pure White Architectural Entrance Canopy Blade
+    const canopyGeo = new THREE.BoxGeometry(3.6, 0.14, 1.8);
+    const canopy = new THREE.Mesh(canopyGeo, this.modernWhiteMat);
+    canopy.position.set(width * 0.34, 3.3, depth * 0.5 + 0.85);
+    shop.add(canopy);
+
+    // Upper Level Contemporary Glass Louvers
+    for (let f = -3; f <= 3; f++) {
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.4, 0.5), this.glassTowerMat);
+      fin.position.set(f * 1.5, 6.6, depth * 0.51);
+      shop.add(fin);
+    }
+
+    return shop;
+  }
+
+  // Distribution: High-Rise Skyscrapers, Modern Luxury Villas, Distinctive Restaurants, Distinctive Shops
+  private createDevelopedBuilding(biome: BiomeType): THREE.Group {
+    const roll = Math.random();
+    if (roll < 0.32) {
+      // 32% Modern High-Rise Skyscrapers
+      return this.createSkyscraper();
+    } else if (roll < 0.58) {
+      // 26% Modern Contemporary Luxury Villas
+      return this.createModernVilla();
+    } else if (roll < 0.80) {
+      // 22% Distinctive Modern Restaurants & Cafes
+      return this.createModernRestaurant();
+    } else {
+      // 20% Distinctive Modern Retail Shops & Boutiques
+      return this.createModernShop();
+    }
   }
 
   // ==================== CHUNK CONTENT SPAWNING ====================
@@ -746,10 +1136,19 @@ export class WorldManager {
     const p1 = patterns[Math.floor(Math.random() * patterns.length)];
     p1();
 
-    // Occasional gentle secondary challenge in advanced runs with generous spacing
-    if (startZ > 500 && Math.random() < 0.35) {
+    // Dynamic secondary challenge scaling as distance and difficulty increase
+    const secondaryChance = Math.min(0.25 + (difficultyFactor - 1.0) * 0.35, 0.85);
+    if (startZ > 200 && Math.random() < secondaryChance) {
       const p2 = patterns[Math.floor(Math.random() * patterns.length)];
       p2();
+    }
+
+    // High distance extra lane-block challenge for elite runners (past 1200m)
+    if (startZ > 1200 && difficultyFactor > 1.6 && Math.random() < 0.45) {
+      const extraObsTypes: ObstacleType[] = ['CONCRETE_BARRIER', 'BARRIER_JUMP', 'GENERATOR_WIRES', 'POTHOLE', 'TEA_CART'];
+      const chosenObs = extraObsTypes[Math.floor(Math.random() * extraObsTypes.length)];
+      const chosenLane = lanes[Math.floor(Math.random() * lanes.length)];
+      this.obstacleManager.createObstacle(chosenObs, chosenLane, startZ + 36);
     }
   }
 
@@ -761,11 +1160,24 @@ export class WorldManager {
       this.nextChunkZ += this.chunkLength;
     }
 
-    // 2. Recycle old chunks behind player
+    // 2. Recycle old chunks behind player and release GPU buffers to prevent overheating
     for (let i = this.chunks.length - 1; i >= 0; i--) {
       const chunk = this.chunks[i];
       if (chunk.startZ + chunk.length < playerZ - 35) {
         this.scene.remove(chunk.group);
+        chunk.group.traverse((obj) => {
+          if ((obj as THREE.Mesh).isMesh) {
+            const mesh = obj as THREE.Mesh;
+            // Only dispose geometries not shared on class instance
+            if (
+              mesh.geometry &&
+              mesh.geometry !== this.roadGeo &&
+              mesh.geometry !== this.puddleGeo
+            ) {
+              mesh.geometry.dispose();
+            }
+          }
+        });
         this.chunks.splice(i, 1);
       }
     }

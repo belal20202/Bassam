@@ -104,6 +104,20 @@ export default function App() {
     setGameState('MENU');
   };
 
+  const handleReturnHomeFromGameOver = () => {
+    if (engineRef.current) {
+      engineRef.current.stopRun();
+    }
+    setGameState('MENU');
+  };
+
+  const handlePlayAgainFromGameOver = () => {
+    if (engineRef.current) {
+      engineRef.current.stopRun();
+    }
+    handleRequestStartGame();
+  };
+
   const handleHUDUpdate = (
     dist: number,
     coins: number,
@@ -122,9 +136,12 @@ export default function App() {
 
   const handleGameOver = (stats: RunStats) => {
     setLatestRunStats(stats);
-    // Process progression and update missions/achievements/XP
-    const { updatedPlayer } = processRunProgression(playerData, stats);
-    setPlayerData(updatedPlayer);
+    // Process progression and update missions/achievements/XP reliably with latest state
+    setPlayerData((prev) => {
+      const { updatedPlayer } = processRunProgression(prev, stats);
+      savePlayerData(updatedPlayer);
+      return updatedPlayer;
+    });
     setGameState('GAMEOVER');
   };
 
@@ -315,8 +332,8 @@ export default function App() {
         <GameOverModal
           runStats={latestRunStats}
           playerData={playerData}
-          onPlayAgain={handleRequestStartGame}
-          onReturnHome={() => setGameState('MENU')}
+          onPlayAgain={handlePlayAgainFromGameOver}
+          onReturnHome={handleReturnHomeFromGameOver}
         />
       )}
 

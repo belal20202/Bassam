@@ -198,7 +198,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
-              <div>اسم اللعبة: <strong className="text-white font-bold">بسام</strong></div>
+              <div>اسم اللعبة: <strong className="text-white font-bold">Bassam</strong></div>
               <div>المطور والمصمم: <strong className="text-amber-400 font-bold">بلال النعيمي</strong></div>
               <div>رقم الإصدار: <strong className="text-slate-200 font-mono">2.0</strong></div>
               <div>دعم الأجهزة: <strong className="text-emerald-400">أندرويد متطور ومتوسط</strong></div>
