@@ -10,13 +10,13 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_classic_sport',
     category: 'OUTFIT',
-    name: 'طقم بسام الرياضي العصري',
-    description: 'سترة هودي شبابية أنيقة باللون الأزرق الملكي والذهبي مع بنطال رياضي مريح للجري والمطاردات في شوارع بغداد.',
+    name: 'هودي بسام الفيروزي العصري',
+    description: 'سترة هودي شبابية فيروزية رائعة مع طبعة be st النيونية وحقيبة كروس بنطال رياضي أسود بخطوط سرعة فيروزية.',
     price: 0,
     rarity: 'COMMON',
-    colorHex: '#1d4ed8', // Iconic Dynamic Royal Blue
-    secondaryColorHex: '#f59e0b', // Golden Amber Athletic Trim
-    perkDescription: 'الهودي الشبابي الرياضي الأصيل والأنيق لبسام.',
+    colorHex: '#00c7d9', // Vibrant Turquoise Cyan from image
+    secondaryColorHex: '#d946ef', // Magenta Purple accent from image
+    perkDescription: 'الهودي الفيروزي المميز لبسام المطابق للتصميم الكرتوني ثلاثي الأبعاد.',
     isUnlockedDefault: true,
   },
   {
@@ -233,13 +233,13 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'shoes_classic_runner',
     category: 'SHOES',
-    name: 'حذاء بسام الرياضي الاحترافي',
-    description: 'حذاء ركض رياضي حديث ثلاثي الأبعاد بنعل ممتص للصدمات وتبطين ديناميكي للسرعة والقفز.',
+    name: 'حذاء الركض الفيروزي والليموني',
+    description: 'حذاء ركض رياضي عصري ثلاثي الأبعاد بنعل ليموني سميك ممتص للصدمات وجسم فيروزية مع أربطة نيونية.',
     price: 0,
     rarity: 'COMMON',
-    colorHex: '#1d4ed8',
-    secondaryColorHex: '#f8fafc',
-    perkDescription: 'حذاء ركض بسام الرياضي الأساسي والمريح.',
+    colorHex: '#00c7d9', // Cyan body
+    secondaryColorHex: '#a3e635', // Neon Lime Sole from image
+    perkDescription: 'حذاء ركض بسام الفيروزي بنعل ليموني فائق المرونة للقفز.',
     isUnlockedDefault: true,
   },
   {

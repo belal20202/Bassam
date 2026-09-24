@@ -9,7 +9,23 @@ import { SHOP_ITEMS } from '../data/items';
 import { CharacterTextureManager } from './characterTextures';
 import { DynamicSkeletalRig, ArticulatedHandRig } from './skeletalRig';
 
-export type CharacterAction = 'RUN' | 'JUMP' | 'SLIDE' | 'STUMBLE' | 'CRASH' | 'IDLE';
+export const CHARACTER_DESIGN_VERSION = 2;
+
+export type CharacterAction =
+  | 'IDLE'
+  | 'RUN'
+  | 'FAST_RUN'
+  | 'JUMP'
+  | 'FALL'
+  | 'LAND'
+  | 'SLIDE'
+  | 'LANE_LEFT'
+  | 'LANE_RIGHT'
+  | 'DODGE'
+  | 'HIT'
+  | 'STUMBLE'
+  | 'DEATH'
+  | 'CRASH';
 
 /**
  * Procedural Texture & PBR Material Generator for Bassam
@@ -123,12 +139,20 @@ export class HighPrecisionTextureEngine {
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. Multi-tone Iris Gradient (Deep shadow at top, radiant amber/hazel below)
+    // 2. Multi-tone Iris Gradient
+    const isBlueIris = hexColor.toLowerCase().includes('0ea5e9') || hexColor.toLowerCase().includes('38bdf8') || hexColor.toLowerCase().includes('0284c7');
     const irisGrad = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
-    irisGrad.addColorStop(0, '#1a0d05'); // Eyelid cast shadow
-    irisGrad.addColorStop(0.35, '#3b1c0a');
-    irisGrad.addColorStop(0.70, hexColor);
-    irisGrad.addColorStop(1.0, '#f59e0b'); // Warm glowing lower iris
+    if (isBlueIris) {
+      irisGrad.addColorStop(0, '#082f49'); // Deep shadow
+      irisGrad.addColorStop(0.35, '#0369a1');
+      irisGrad.addColorStop(0.70, hexColor);
+      irisGrad.addColorStop(1.0, '#38bdf8'); // Glowing azure/cyan
+    } else {
+      irisGrad.addColorStop(0, '#1a0d05');
+      irisGrad.addColorStop(0.35, '#3b1c0a');
+      irisGrad.addColorStop(0.70, hexColor);
+      irisGrad.addColorStop(1.0, '#f59e0b');
+    }
     ctx.fillStyle = irisGrad;
     ctx.beginPath();
     ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
@@ -138,7 +162,9 @@ export class HighPrecisionTextureEngine {
     ctx.save();
     ctx.translate(cx, cy);
     for (let angle = 0; angle < Math.PI * 2; angle += 0.12) {
-      ctx.strokeStyle = Math.sin(angle * 3) > 0 ? 'rgba(251, 191, 36, 0.45)' : 'rgba(217, 119, 6, 0.35)';
+      ctx.strokeStyle = isBlueIris 
+        ? (Math.sin(angle * 3) > 0 ? 'rgba(125, 211, 252, 0.50)' : 'rgba(56, 189, 248, 0.40)')
+        : (Math.sin(angle * 3) > 0 ? 'rgba(251, 191, 36, 0.45)' : 'rgba(217, 119, 6, 0.35)');
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(Math.cos(angle) * 32, Math.sin(angle) * 32);
@@ -149,9 +175,15 @@ export class HighPrecisionTextureEngine {
 
     // 4. Luminous Lower Crescent Reflection (Signature animated movie eye glow)
     const crescentGrad = ctx.createRadialGradient(cx, cy + 50, 10, cx, cy + 50, 75);
-    crescentGrad.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
-    crescentGrad.addColorStop(0.55, 'rgba(245, 158, 11, 0.50)');
-    crescentGrad.addColorStop(1, 'transparent');
+    if (isBlueIris) {
+      crescentGrad.addColorStop(0, 'rgba(186, 230, 253, 0.90)');
+      crescentGrad.addColorStop(0.55, 'rgba(56, 189, 248, 0.60)');
+      crescentGrad.addColorStop(1, 'transparent');
+    } else {
+      crescentGrad.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
+      crescentGrad.addColorStop(0.55, 'rgba(245, 158, 11, 0.50)');
+      crescentGrad.addColorStop(1, 'transparent');
+    }
     ctx.fillStyle = crescentGrad;
     ctx.beginPath();
     ctx.arc(cx, cy + 25, 75, 0.15 * Math.PI, 0.85 * Math.PI, false);
@@ -327,6 +359,8 @@ export class BassamCharacter {
   public headphonesMesh: THREE.Group | null = null;
   public tacticalMaskMesh: THREE.Group | null = null;
   public scarfMesh: THREE.Group | null = null;
+  public undershirtMesh: THREE.Mesh;
+  public crossbodyGroup: THREE.Group;
 
   // PBR Materials
   public skinMat: THREE.MeshStandardMaterial;
@@ -341,6 +375,10 @@ export class BassamCharacter {
   public capMat: THREE.MeshStandardMaterial;
   public backpackMat: THREE.MeshStandardMaterial;
   public goldTrimMat: THREE.MeshStandardMaterial;
+  public undershirtMat: THREE.MeshStandardMaterial;
+  public strapMat: THREE.MeshStandardMaterial;
+  public gloveMat: THREE.MeshStandardMaterial;
+  public cordMat: THREE.MeshStandardMaterial;
 
   // Power-Up Meshes
   public shieldMesh: THREE.Mesh;
@@ -365,6 +403,10 @@ export class BassamCharacter {
   public slideTimer: number = 0;
   public slideDuration: number = 0.85;
   public rollAngle: number = 0;
+  public stumbleTimer: number = 0;
+  public stumbleDuration: number = 0.45;
+  public crashTumbleTime: number = 0;
+  public laneShiftIntensity: number = 0;
 
   // Landing Rebound Physics (ارتداد خفيف عند الهبوط من القفز)
   public landingReboundTime: number = 0;
@@ -389,50 +431,51 @@ export class BassamCharacter {
     this.textureManager = new CharacterTextureManager();
     this.skeletalRig = new DynamicSkeletalRig();
 
-    // 1. Materials with warm, rich stylized palette
+    // 1. Materials with bright fair Caucasian/Arabic light skin palette requested by user
+    const initialSkinColor = this.appearance.skinTone ? new THREE.Color(this.appearance.skinTone) : new THREE.Color(0xf5cbaf);
     this.skinMat = new THREE.MeshStandardMaterial({
-      color: 0xdfa37a, // Warm Middle-Eastern golden tan skin tone
-      roughness: 0.50,
-      metalness: 0.03,
+      color: initialSkinColor, // بشرة بيضاء نقية مع تورّد طبيعي
+      roughness: 0.42,
+      metalness: 0.02,
     });
 
     this.faceMat = this.skinMat;
     this.handsMat = this.skinMat;
 
     this.eyeIrisMat = new THREE.MeshStandardMaterial({
-      map: HighPrecisionTextureEngine.createIrisTexture(this.appearance.eyeColor.hex),
-      roughness: 0.10,
+      map: HighPrecisionTextureEngine.createIrisTexture(this.appearance.eyeColor.hex || '#0ea5e9'),
+      roughness: 0.08,
       metalness: 0.05,
     });
 
     this.hoodieMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.textures.jacketAlbedo,
-      roughness: 0.65,
-      metalness: 0.08,
+      roughness: 0.62,
+      metalness: 0.06,
     });
 
     this.pantsMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.textures.joggersAlbedo,
-      roughness: 0.70,
-      metalness: 0.06,
+      roughness: 0.68,
+      metalness: 0.05,
     });
 
     this.shoeMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.textures.sneakersAlbedo,
-      roughness: 0.45,
-      metalness: 0.12,
+      roughness: 0.40,
+      metalness: 0.10,
     });
 
     this.shoeSoleMat = new THREE.MeshStandardMaterial({
-      color: 0xf8fafc,
-      roughness: 0.32,
-      metalness: 0.05,
+      color: 0xa3e635, // Neon Lime Rubber Sole from reference image
+      roughness: 0.35,
+      metalness: 0.04,
     });
 
     this.hairMat = new THREE.MeshStandardMaterial({
-      color: 0x16100d, // Natural dark espresso-black hair
-      roughness: 0.52,
-      metalness: 0.12,
+      color: 0x5c341b, // Rich warm chestnut brown hair from reference image
+      roughness: 0.48,
+      metalness: 0.10,
     });
 
     this.capMat = new THREE.MeshStandardMaterial({
@@ -443,14 +486,38 @@ export class BassamCharacter {
 
     this.backpackMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.textures.backpackAlbedo,
-      roughness: 0.58,
-      metalness: 0.12,
+      roughness: 0.55,
+      metalness: 0.10,
     });
 
     this.goldTrimMat = new THREE.MeshStandardMaterial({
-      color: 0xf59e0b,
+      color: 0xfbbf24,
       metalness: 0.85,
-      roughness: 0.25,
+      roughness: 0.20,
+    });
+
+    this.undershirtMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, // Crisp clean white cotton undershirt
+      roughness: 0.72,
+      metalness: 0.02,
+    });
+
+    this.strapMat = new THREE.MeshStandardMaterial({
+      color: 0xd946ef, // Vibrant Magenta Purple crossbody strap
+      roughness: 0.48,
+      metalness: 0.08,
+    });
+
+    this.gloveMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b, // Tactical Charcoal Black fingerless gloves
+      roughness: 0.65,
+      metalness: 0.10,
+    });
+
+    this.cordMat = new THREE.MeshStandardMaterial({
+      color: 0xfacc15, // Bright Neon Yellow Drawstring Cords
+      roughness: 0.40,
+      metalness: 0.10,
     });
 
     // 2. Build Master Skeletal Structure with Solid Subway Surfers Proportions
@@ -463,16 +530,22 @@ export class BassamCharacter {
     this.pelvisBone.position.set(0, 0.96, 0);
     this.rootBone.add(this.pelvisBone);
 
-    const pelvisGeo = new THREE.CylinderGeometry(0.185, 0.160, 0.18, 18);
+    const pelvisGeo = new THREE.CylinderGeometry(0.185, 0.160, 0.18, 20);
     this.pelvisMesh = new THREE.Mesh(pelvisGeo, this.pantsMat);
     this.pelvisMesh.castShadow = true;
     this.pelvisMesh.receiveShadow = true;
     this.pelvisBone.add(this.pelvisMesh);
 
-    // Ribbed Waistband connecting hoodie and pants
-    const waistbandGeo = new THREE.CylinderGeometry(0.190, 0.186, 0.045, 18);
+    // Layered White Athletic Undershirt Hem (طبقة التيشيرت الأبيض البارزة أسفل الهودي كالصور تماماً)
+    const undershirtGeo = new THREE.CylinderGeometry(0.194, 0.188, 0.048, 24);
+    this.undershirtMesh = new THREE.Mesh(undershirtGeo, this.undershirtMat);
+    this.undershirtMesh.position.set(0, 0.040, 0);
+    this.pelvisBone.add(this.undershirtMesh);
+
+    // Ribbed Waistband connecting hoodie and undershirt
+    const waistbandGeo = new THREE.CylinderGeometry(0.198, 0.194, 0.042, 22);
     const waistbandMesh = new THREE.Mesh(waistbandGeo, this.hoodieMat);
-    waistbandMesh.position.set(0, 0.08, 0);
+    waistbandMesh.position.set(0, 0.085, 0);
     this.pelvisBone.add(waistbandMesh);
 
     // Spine
@@ -485,22 +558,39 @@ export class BassamCharacter {
     this.chestBone.position.set(0, 0.17, 0);
     this.spineLowerBone.add(this.chestBone);
 
-    const chestGeo = new THREE.CylinderGeometry(0.235, 0.185, 0.32, 20);
+    const chestGeo = new THREE.CylinderGeometry(0.235, 0.185, 0.32, 22);
     this.chestMesh = new THREE.Mesh(chestGeo, this.hoodieMat);
     this.chestMesh.position.set(0, 0.13, 0);
     this.chestMesh.castShadow = true;
     this.chestMesh.receiveShadow = true;
     this.chestBone.add(this.chestMesh);
 
-    // Sculpted Kangaroo Front Pouch Pocket
-    const pocketGeo = new THREE.BoxGeometry(0.22, 0.13, 0.08);
+    // Smooth Ergonomically Curved Kangaroo Pouch (جيب الكنغر الرياضي المقوس بانسيابية بدون زوايا حادة)
+    const pocketGeo = new THREE.CylinderGeometry(0.130, 0.145, 0.13, 20, 1, false, 0, Math.PI);
+    pocketGeo.scale(1.0, 0.95, 0.55);
     this.kangarooPocket = new THREE.Mesh(pocketGeo, this.hoodieMat);
-    this.kangarooPocket.position.set(0, 0.03, 0.155);
+    this.kangarooPocket.position.set(0, 0.04, 0.135);
     this.kangarooPocket.castShadow = true;
     this.chestBone.add(this.kangarooPocket);
 
+    // Kangaroo Pocket Side Openings with Smooth Curved Rims
+    const pocketRimMat = new THREE.MeshStandardMaterial({
+      color: 0x0891b2,
+      roughness: 0.55,
+    });
+    const rimGeo = new THREE.TorusGeometry(0.038, 0.007, 8, 16, Math.PI * 0.7);
+    const rimL = new THREE.Mesh(rimGeo, pocketRimMat);
+    rimL.rotation.y = -Math.PI * 0.35;
+    rimL.position.set(-0.11, 0.03, 0.12);
+    this.chestBone.add(rimL);
+
+    const rimR = new THREE.Mesh(rimGeo, pocketRimMat);
+    rimR.rotation.y = Math.PI * 0.35;
+    rimR.position.set(0.11, 0.03, 0.12);
+    this.chestBone.add(rimR);
+
     // Raised Ribbed Hoodie Collar around the neck
-    const collarGeo = new THREE.TorusGeometry(0.105, 0.032, 12, 24);
+    const collarGeo = new THREE.TorusGeometry(0.105, 0.032, 14, 24);
     const collarMesh = new THREE.Mesh(collarGeo, this.hoodieMat);
     collarMesh.rotation.x = Math.PI * 0.5;
     collarMesh.position.set(0, 0.28, 0);
@@ -513,18 +603,18 @@ export class BassamCharacter {
     this.drapedHood.position.set(0, 0.25, -0.055);
     this.chestBone.add(this.drapedHood);
 
-    // Hoodie Drawstrings with Golden Metallic Aglets
-    const cordGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.19, 8);
-    this.drawstringL = new THREE.Mesh(cordGeo, this.goldTrimMat);
+    // Bright Neon Yellow Hoodie Drawstrings with Golden Metallic Aglets (from reference image)
+    const cordGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.19, 10);
+    this.drawstringL = new THREE.Mesh(cordGeo, this.cordMat);
     this.drawstringL.position.set(-0.055, 0.17, 0.14);
     this.chestBone.add(this.drawstringL);
 
-    this.drawstringR = new THREE.Mesh(cordGeo, this.goldTrimMat);
+    this.drawstringR = new THREE.Mesh(cordGeo, this.cordMat);
     this.drawstringR.position.set(0.055, 0.17, 0.14);
     this.chestBone.add(this.drawstringR);
 
     // Aglet tips
-    const agletGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.025, 8);
+    const agletGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.025, 10);
     const agletL = new THREE.Mesh(agletGeo, this.goldTrimMat);
     agletL.position.set(0, -0.095, 0);
     this.drawstringL.add(agletL);
@@ -533,7 +623,11 @@ export class BassamCharacter {
     agletR.position.set(0, -0.095, 0);
     this.drawstringR.add(agletR);
 
-    // Urban Runner Backpack
+    // Crossbody Runner Messenger Sling Strap & Golden Clasp (حزام الكروس المائل والميدالية الذهبية من الصورة)
+    this.crossbodyGroup = this.createCrossbodyStrapAndBag();
+    this.chestBone.add(this.crossbodyGroup);
+
+    // Urban Runner Backpack / Back Pack Mount
     this.backpackGroup = this.createBackpack();
     this.chestBone.add(this.backpackGroup);
 
@@ -553,19 +647,50 @@ export class BassamCharacter {
     this.headBone.position.set(0, 0.11, 0);
     this.neckBone.add(this.headBone);
 
-    // 1. Sculpted Handsome Stylized Head Geometry (Clean jawline, cheek contour & chin)
-    const headGeo = new THREE.SphereGeometry(0.128, 28, 28);
-    headGeo.scale(0.97, 1.12, 1.04);
-    this.headMesh = new THREE.Mesh(headGeo, this.skinMat);
+    // 1. Sculpted Stylized Human Head Geometry (Cranium, Forehead, Jawline, Cheeks & Chin)
+    const craniumGeo = new THREE.SphereGeometry(0.122, 28, 24);
+    craniumGeo.scale(0.96, 1.08, 1.02);
+    this.headMesh = new THREE.Mesh(craniumGeo, this.skinMat);
     this.headMesh.position.set(0, 0.12, -0.005);
     this.headMesh.castShadow = true;
     this.headBone.add(this.headMesh);
 
-    // Sculpted Athletic Chin & Jaw
-    const chinGeo = new THREE.SphereGeometry(0.044, 18, 18);
-    chinGeo.scale(0.90, 0.72, 1.0);
+    // Frontal Forehead & Brow Contour (Natural youthful forehead line)
+    const foreheadGeo = new THREE.SphereGeometry(0.082, 18, 16);
+    foreheadGeo.scale(1.10, 0.72, 0.85);
+    const foreheadMesh = new THREE.Mesh(foreheadGeo, this.skinMat);
+    foreheadMesh.position.set(0, 0.165, 0.046);
+    this.headBone.add(foreheadMesh);
+
+    // Sculpted Mandibular Jawline (Angled natural jaw contour connecting below ears)
+    const jawLGeo = new THREE.CylinderGeometry(0.024, 0.020, 0.10, 12);
+    jawLGeo.rotateZ(0.38);
+    jawLGeo.rotateX(0.18);
+    const jawL = new THREE.Mesh(jawLGeo, this.skinMat);
+    jawL.position.set(-0.062, 0.045, 0.018);
+    this.headBone.add(jawL);
+
+    const jawRGeo = new THREE.CylinderGeometry(0.024, 0.020, 0.10, 12);
+    jawRGeo.rotateZ(-0.38);
+    jawRGeo.rotateX(0.18);
+    const jawR = new THREE.Mesh(jawRGeo, this.skinMat);
+    jawR.position.set(0.062, 0.045, 0.018);
+    this.headBone.add(jawR);
+
+    // Zygomatic Cheekbones (Defined, handsome athletic Arab facial contours)
+    const cheekGeo = new THREE.SphereGeometry(0.034, 14, 14);
+    cheekGeo.scale(1.0, 0.85, 0.95);
+    const cheekL = new THREE.Mesh(cheekGeo, this.skinMat);
+    cheekL.position.set(-0.062, 0.068, 0.044);
+    const cheekR = new THREE.Mesh(cheekGeo, this.skinMat);
+    cheekR.position.set(0.062, 0.068, 0.044);
+    this.headBone.add(cheekL, cheekR);
+
+    // Sculpted Athletic Chin with clean rounded curvature
+    const chinGeo = new THREE.SphereGeometry(0.040, 18, 18);
+    chinGeo.scale(0.92, 0.72, 0.98);
     const chinMesh = new THREE.Mesh(chinGeo, this.skinMat);
-    chinMesh.position.set(0, 0.018, 0.058);
+    chinMesh.position.set(0, 0.018, 0.060);
     this.headBone.add(chinMesh);
 
     // 2. Sculpted Stylized Ears
@@ -584,6 +709,19 @@ export class BassamCharacter {
     this.facialRig = this.createStylizedFacialRig();
     this.headBone.add(this.facialRig.faceGroup);
     this.lipsMesh = this.facialRig.lipsMesh;
+
+    // 5. Stylized Wearable Accessories (Shemagh, Sunglasses, Headphones, Scarf)
+    this.shemaghMesh = this.createShemaghMesh();
+    this.headBone.add(this.shemaghMesh);
+
+    this.sunglassesMesh = this.createSunglassesMesh();
+    this.headBone.add(this.sunglassesMesh);
+
+    this.headphonesMesh = this.createHeadphonesMesh();
+    this.headBone.add(this.headphonesMesh);
+
+    this.scarfMesh = this.createRoyalScarfMesh();
+    this.neckBone.add(this.scarfMesh);
 
     // Upper Limbs - Solid Athletic Sleeves & Anatomical Hands
     this.clavicleLeftBone = new THREE.Group();
@@ -718,38 +856,39 @@ export class BassamCharacter {
   }
 
   /**
-   * Anatomical Stylized Ear
+   * Anatomical Stylized Small Neat Ear (أذن صغيرة متناسقة وأنيقة)
    */
   private createStylizedEar(side: number): THREE.Group {
     const ear = new THREE.Group();
-    ear.position.set(side * 0.124, 0.118, -0.012);
-    ear.rotation.y = side * 0.20; // 12-degree natural angle
+    // Scaled down to neat, proportional ear sizing (0.75 ratio)
+    ear.position.set(side * 0.120, 0.115, -0.010);
+    ear.rotation.y = side * 0.18; // 10-degree natural subtle tilt
 
-    // Outer Helix rim
-    const earGeo = new THREE.TorusGeometry(0.024, 0.006, 8, 16, Math.PI * 1.35);
+    // Outer Helix rim (neat, tight curve)
+    const earGeo = new THREE.TorusGeometry(0.017, 0.0042, 8, 16, Math.PI * 1.30);
     const earMesh = new THREE.Mesh(earGeo, this.skinMat);
-    earMesh.rotation.z = side * 0.20;
+    earMesh.rotation.z = side * 0.18;
     ear.add(earMesh);
 
     // Inner Antihelix ridge & fossa
-    const innerGeo = new THREE.TorusGeometry(0.014, 0.004, 6, 12, Math.PI * 1.1);
+    const innerGeo = new THREE.TorusGeometry(0.0095, 0.0030, 6, 12, Math.PI * 1.05);
     const innerMesh = new THREE.Mesh(innerGeo, this.skinMat);
-    innerMesh.position.set(side * -0.004, 0.002, 0.002);
-    innerMesh.rotation.z = side * 0.25;
+    innerMesh.position.set(side * -0.003, 0.0015, 0.0015);
+    innerMesh.rotation.z = side * 0.22;
     ear.add(innerMesh);
 
-    // Tragus
-    const tragusGeo = new THREE.SphereGeometry(0.006, 8, 8);
-    tragusGeo.scale(0.8, 1.2, 0.8);
+    // Delicate Tragus
+    const tragusGeo = new THREE.SphereGeometry(0.0042, 8, 8);
+    tragusGeo.scale(0.8, 1.1, 0.8);
     const tragusMesh = new THREE.Mesh(tragusGeo, this.skinMat);
-    tragusMesh.position.set(side * 0.006, -0.004, 0.007);
+    tragusMesh.position.set(side * 0.0045, -0.003, 0.005);
     ear.add(tragusMesh);
 
-    // Soft rounded Lobule
-    const lobeGeo = new THREE.SphereGeometry(0.009, 8, 8);
-    lobeGeo.scale(0.85, 1.2, 0.75);
+    // Soft rounded small Lobule (شحمة أذن صغيرة وجميلة)
+    const lobeGeo = new THREE.SphereGeometry(0.0062, 8, 8);
+    lobeGeo.scale(0.80, 1.15, 0.70);
     const lobeMesh = new THREE.Mesh(lobeGeo, this.skinMat);
-    lobeMesh.position.set(0, -0.020, 0);
+    lobeMesh.position.set(0, -0.014, 0);
     ear.add(lobeMesh);
 
     return ear;
@@ -773,28 +912,41 @@ export class BassamCharacter {
     scalpMesh.position.set(0, 0.026, 0);
     hairGroup.add(scalpMesh);
 
-    // Volumetric Sculpted Crown Locks (Modern textured fade top)
-    const crownGeo = new THREE.SphereGeometry(0.128, 18, 18);
-    crownGeo.scale(0.96, 0.78, 1.12);
+    // Volumetric Sculpted Crown Locks (Modern textured fade top with distinctive layered styling)
+    const crownGeo = new THREE.SphereGeometry(0.132, 20, 20);
+    crownGeo.scale(0.96, 0.85, 1.15);
     const crownMesh = new THREE.Mesh(crownGeo, this.hairMat);
-    crownMesh.position.set(0, 0.095, 0.015);
+    crownMesh.position.set(0, 0.105, 0.015);
     crownMesh.castShadow = true;
     hairGroup.add(crownMesh);
 
-    // Dynamic Swept Hair Locks across the crown
+    // Iconic Volumetric Front Wave Quiff (تموج الشعر الأمامي الكثيف المرفوع والمنحني لليمين كالصور تماماً)
+    const waveGeo = new THREE.TorusGeometry(0.065, 0.024, 12, 20, Math.PI * 0.85);
+    waveGeo.scale(1.2, 0.8, 1.4);
+    const waveMesh = new THREE.Mesh(waveGeo, this.hairMat);
+    waveMesh.position.set(0.015, 0.125, 0.085);
+    waveMesh.rotation.x = Math.PI * 0.28;
+    waveMesh.rotation.y = -Math.PI * 0.15;
+    waveMesh.rotation.z = -0.35;
+    waveMesh.castShadow = true;
+    hairGroup.add(waveMesh);
+
+    // Dynamic Swept Hair Locks across the crown (Rich textured locks)
     const lockDefs = [
-      { x: -0.045, y: 0.12, z: 0.06, scale: 0.038, rotZ: 0.25 },
-      { x: -0.015, y: 0.13, z: 0.07, scale: 0.042, rotZ: 0.10 },
-      { x: 0.020, y: 0.13, z: 0.06, scale: 0.040, rotZ: -0.15 },
-      { x: 0.050, y: 0.11, z: 0.05, scale: 0.035, rotZ: -0.30 },
+      { x: -0.052, y: 0.13, z: 0.06, scale: 0.040, rotZ: 0.28 },
+      { x: -0.024, y: 0.145, z: 0.075, scale: 0.046, rotZ: 0.12 },
+      { x: 0.005, y: 0.150, z: 0.080, scale: 0.048, rotZ: -0.05 },
+      { x: 0.030, y: 0.142, z: 0.065, scale: 0.044, rotZ: -0.18 },
+      { x: 0.058, y: 0.125, z: 0.050, scale: 0.038, rotZ: -0.34 },
     ];
 
     lockDefs.forEach((ld) => {
-      const lockGeo = new THREE.ConeGeometry(ld.scale, ld.scale * 2.2, 8);
+      const lockGeo = new THREE.ConeGeometry(ld.scale, ld.scale * 2.3, 8);
       lockGeo.rotateX(Math.PI * 0.35);
       lockGeo.rotateZ(ld.rotZ);
       const lock = new THREE.Mesh(lockGeo, this.hairMat);
       lock.position.set(ld.x, ld.y, ld.z);
+      lock.castShadow = true;
       hairGroup.add(lock);
     });
 
@@ -830,13 +982,43 @@ export class BassamCharacter {
       sGeo.rotateZ(cfg.angle);
       const sMesh = new THREE.Mesh(sGeo, this.hairMat);
       sMesh.position.set(0, -cfg.len * 0.25, 0.012);
+      sMesh.castShadow = true;
       strandGroup.add(sMesh);
 
       hairFringe.add(strandGroup);
     });
     hairGroup.add(hairFringe);
 
-    // Subway Surfers Iconic Runner Snapback Cap (Tilted backwards)
+    // =========================================================================
+    // LAYERED SCULPTED REAR LOCKS (Distinctive silhouette from Behind-the-Back camera!)
+    // =========================================================================
+    const rearLocks = [
+      // Top row (occipital crown transition)
+      { x: 0, y: 0.095, z: -0.126, rX: 0.040, rY: 0.090, rotX: -0.48, rotZ: 0 },
+      { x: -0.046, y: 0.090, z: -0.118, rX: 0.034, rY: 0.082, rotX: -0.42, rotZ: 0.22 },
+      { x: 0.046, y: 0.090, z: -0.118, rX: 0.034, rY: 0.082, rotX: -0.42, rotZ: -0.22 },
+      // Mid row
+      { x: -0.065, y: 0.045, z: -0.098, rX: 0.030, rY: 0.075, rotX: -0.35, rotZ: 0.28 },
+      { x: 0.065, y: 0.045, z: -0.098, rX: 0.030, rY: 0.075, rotX: -0.35, rotZ: -0.28 },
+      { x: -0.026, y: 0.035, z: -0.116, rX: 0.032, rY: 0.072, rotX: -0.36, rotZ: 0.12 },
+      { x: 0.026, y: 0.035, z: -0.116, rX: 0.032, rY: 0.072, rotX: -0.36, rotZ: -0.12 },
+      // Lower row (nape taper points)
+      { x: -0.016, y: -0.015, z: -0.104, rX: 0.024, rY: 0.060, rotX: -0.24, rotZ: 0.08 },
+      { x: 0.016, y: -0.015, z: -0.104, rX: 0.024, rY: 0.060, rotX: -0.24, rotZ: -0.08 },
+      { x: 0, y: -0.025, z: -0.100, rX: 0.022, rY: 0.052, rotX: -0.20, rotZ: 0 },
+    ];
+
+    rearLocks.forEach((rl) => {
+      const lockGeo = new THREE.ConeGeometry(rl.rX, rl.rY, 8);
+      lockGeo.rotateX(rl.rotX);
+      if (rl.rotZ) lockGeo.rotateZ(rl.rotZ);
+      const lock = new THREE.Mesh(lockGeo, this.hairMat);
+      lock.position.set(rl.x, rl.y, rl.z);
+      lock.castShadow = true;
+      hairGroup.add(lock);
+    });
+
+    // Modern Runner Baseball Cap (Optional accessory toggleable in shop)
     const runnerCapGroup = new THREE.Group();
     runnerCapGroup.position.set(0, 0.06, 0);
 
@@ -860,8 +1042,8 @@ export class BassamCharacter {
     strap.position.set(0, -0.01, 0.02);
     runnerCapGroup.add(strap);
 
-    // Start with cap enabled for authentic Subway Surfers flavor
-    runnerCapGroup.visible = true;
+    // Distinctive hair is shown openly as requested by user; cap can be toggled via shop/accessories
+    runnerCapGroup.visible = false;
     hairGroup.add(runnerCapGroup);
 
     return { hairGroup, hairFringe, runnerCapGroup };
@@ -933,7 +1115,7 @@ export class BassamCharacter {
     rightEyelash.rotation.z = -0.15;
     rightUpperLid.add(rightEyelash);
 
-    // Stylized Eyebrows (Heroic, confident arch)
+    // Stylized Eyebrows (Heroic, confident, naturally arched curve - ZERO BOXES)
     const leftEyebrowBone = new THREE.Group();
     leftEyebrowBone.position.set(-0.044, 0.062, 0.020);
     faceGroup.add(leftEyebrowBone);
@@ -942,13 +1124,19 @@ export class BassamCharacter {
     rightEyebrowBone.position.set(0.044, 0.062, 0.020);
     faceGroup.add(rightEyebrowBone);
 
-    const browGeo = new THREE.BoxGeometry(0.045, 0.008, 0.012);
+    // Smooth Curved Expressive Eyebrow Arc (قوس حاجب ناعم ومنحني طبيعي ثلاثي الأبعاد)
+    const browGeo = new THREE.TorusGeometry(0.038, 0.0055, 8, 18, Math.PI * 0.44);
+    browGeo.scale(1.25, 0.65, 0.9);
     const browMeshL = new THREE.Mesh(browGeo, this.hairMat);
-    browMeshL.rotation.z = -0.14;
+    browMeshL.rotation.z = 0.40;
+    browMeshL.rotation.x = 0.18;
+    browMeshL.rotation.y = -0.22;
     leftEyebrowBone.add(browMeshL);
 
     const browMeshR = new THREE.Mesh(browGeo, this.hairMat);
-    browMeshR.rotation.z = 0.14;
+    browMeshR.rotation.z = -0.40;
+    browMeshR.rotation.x = 0.18;
+    browMeshR.rotation.y = 0.22;
     rightEyebrowBone.add(browMeshR);
 
     // =========================================================================
@@ -984,6 +1172,31 @@ export class BassamCharacter {
     shadowMesh.rotation.x = -Math.PI * 0.35;
     noseGroup.add(shadowMesh);
 
+    // Anatomical alar nostrils (خياشيم الأنف الدقيقة المتناسقة)
+    const nostrilGeo = new THREE.SphereGeometry(0.0040, 8, 8);
+    nostrilGeo.scale(1.2, 0.8, 1.0);
+    const nostrilMat = new THREE.MeshBasicMaterial({ color: 0x542918 });
+    const nostrilL = new THREE.Mesh(nostrilGeo, nostrilMat);
+    nostrilL.position.set(-0.0055, -0.010, 0.011);
+    const nostrilR = new THREE.Mesh(nostrilGeo, nostrilMat);
+    nostrilR.position.set(0.0055, -0.010, 0.011);
+    noseGroup.add(nostrilL, nostrilR);
+
+    // Soft natural youthful rosy cheek glow (تورّد طبيعي للوجنتين على البشرة الفاتحة)
+    const blushMat = new THREE.MeshBasicMaterial({
+      color: 0xf472b6,
+      transparent: true,
+      opacity: 0.22,
+    });
+    const blushGeo = new THREE.CircleGeometry(0.022, 16);
+    const blushL = new THREE.Mesh(blushGeo, blushMat);
+    blushL.position.set(-0.062, 0.008, 0.014);
+    blushL.rotation.y = -0.28;
+    const blushR = new THREE.Mesh(blushGeo, blushMat);
+    blushR.position.set(0.062, 0.008, 0.014);
+    blushR.rotation.y = 0.28;
+    faceGroup.add(blushL, blushR);
+
     // =========================================================================
     // 3. CHARISMATIC RUNNER SMILE & TEETH
     // =========================================================================
@@ -991,11 +1204,23 @@ export class BassamCharacter {
     mouthGroup.position.set(0, -0.030, 0.028);
     faceGroup.add(mouthGroup);
 
-    // Sculpted upper lip curve (Cupid's bow)
+    // Philtrum indentation (النثرة الطبيعية أعلى الشفة العليا)
+    const philtrumGeo = new THREE.PlaneGeometry(0.005, 0.010);
+    const philtrumMat = new THREE.MeshBasicMaterial({
+      color: 0xc27a68,
+      transparent: true,
+      opacity: 0.25,
+    });
+    const philtrumMesh = new THREE.Mesh(philtrumGeo, philtrumMat);
+    philtrumMesh.position.set(0, 0.008, 0.003);
+    mouthGroup.add(philtrumMesh);
+
+    // Sculpted upper lip curve (Cupid's bow with soft rose vermillion)
     const lipGeo = new THREE.TorusGeometry(0.022, 0.0040, 8, 18, Math.PI * 0.82);
     const lipMat = new THREE.MeshStandardMaterial({
-      color: 0xc46955,
-      roughness: 0.40,
+      color: 0xd87668, // Natural fresh rose lip tone
+      roughness: 0.38,
+      metalness: 0.01,
     });
     const lipsMesh = new THREE.Mesh(lipGeo, lipMat);
     lipsMesh.rotation.x = Math.PI * 0.38;
@@ -1009,8 +1234,9 @@ export class BassamCharacter {
     teethMesh.position.set(0, -0.002, 0.004);
     mouthGroup.add(teethMesh);
 
-    // Soft lower lip volume
-    const lowerLipGeo = new THREE.BoxGeometry(0.018, 0.0042, 0.007);
+    // Soft curved lower lip volume (شفة سفلية ناعمة مقوسة طبيعية بدون أي مربعات)
+    const lowerLipGeo = new THREE.CylinderGeometry(0.0035, 0.0032, 0.018, 12);
+    lowerLipGeo.rotateZ(Math.PI * 0.5);
     const lowerLipMesh = new THREE.Mesh(lowerLipGeo, lipMat);
     lowerLipMesh.position.set(0, -0.008, 0.005);
     mouthGroup.add(lowerLipMesh);
@@ -1052,6 +1278,10 @@ export class BassamCharacter {
     const deltoid = new THREE.Mesh(deltoidGeo, this.hoodieMat);
     shoulderBone.add(deltoid);
 
+    // Seamless shoulder socket cap (تكامل مفصل الكتف لمنع أي انفصال)
+    const shoulderSocket = new THREE.Mesh(new THREE.SphereGeometry(0.064, 14, 14), this.hoodieMat);
+    shoulderBone.add(shoulderSocket);
+
     // Bicep Sleeve
     const bicepGeo = new THREE.CylinderGeometry(0.060, 0.052, 0.26, 16);
     const bicepMesh = new THREE.Mesh(bicepGeo, this.hoodieMat);
@@ -1059,10 +1289,14 @@ export class BassamCharacter {
     bicepMesh.castShadow = true;
     shoulderBone.add(bicepMesh);
 
-    // Elbow Joint with Fabric Crease
+    // Elbow Joint with Smooth Anatomical Volume and Fabric Crease
     const elbowBone = new THREE.Group();
     elbowBone.position.set(0, -0.26, 0);
     shoulderBone.add(elbowBone);
+
+    // Solid joint sphere fill to prevent any gap during bending (مفصل الكوع المندمج بدون فراغات)
+    const elbowSphere = new THREE.Mesh(new THREE.SphereGeometry(0.053, 14, 14), this.hoodieMat);
+    elbowBone.add(elbowSphere);
 
     const creaseGeo = new THREE.TorusGeometry(0.052, 0.010, 8, 16);
     const creaseMesh = new THREE.Mesh(creaseGeo, this.hoodieMat);
@@ -1085,77 +1319,157 @@ export class BassamCharacter {
     const cuffMesh = new THREE.Mesh(cuffGeo, this.hoodieMat);
     wristBone.add(cuffMesh);
 
-    // Smart Fitness Watch on Left Wrist
+    // Digital Runner Sports Watch on Wrist (ساعة عداء رياضية فيروزية رقمية على كلا المعصمين كالصور)
     const watchGroup = new THREE.Group();
-    if (side === -1) {
-      const strapGeo = new THREE.CylinderGeometry(0.048, 0.048, 0.034, 16);
-      const strapMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 });
-      const strap = new THREE.Mesh(strapGeo, strapMat);
-      watchGroup.add(strap);
+    const strapGeo = new THREE.CylinderGeometry(0.048, 0.048, 0.034, 18);
+    const strapMat = new THREE.MeshStandardMaterial({
+      color: 0x00c7d9, // Vibrant Cyan Watch Casing matching reference image
+      roughness: 0.35,
+      metalness: 0.20,
+    });
+    const strap = new THREE.Mesh(strapGeo, strapMat);
+    watchGroup.add(strap);
 
-      const screenGeo = new THREE.BoxGeometry(0.028, 0.022, 0.012);
-      const screenMat = new THREE.MeshStandardMaterial({
-        color: 0x38bdf8,
-        emissive: 0x0284c7,
-        emissiveIntensity: 0.7,
-        roughness: 0.2,
-      });
-      const screen = new THREE.Mesh(screenGeo, screenMat);
-      screen.position.set(0, 0, 0.048);
-      watchGroup.add(screen);
-    }
+    // Beveled Watch Face & Digital Display (مقياس دائري بيضاوي ناعم بدون حواف مكعبة)
+    const screenGeo = new THREE.CylinderGeometry(0.020, 0.020, 0.010, 16);
+    screenGeo.rotateX(Math.PI * 0.5);
+    const screenMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.8,
+      roughness: 0.15,
+    });
+    const screen = new THREE.Mesh(screenGeo, screenMat);
+    screen.position.set(0, 0, 0.048);
+    watchGroup.add(screen);
+
+    // Watch side button
+    const btnGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.008, 10);
+    btnGeo.rotateZ(Math.PI * 0.5);
+    const btn = new THREE.Mesh(btnGeo, this.goldTrimMat);
+    btn.position.set(side * 0.049, 0, 0);
+    watchGroup.add(btn);
+
     wristBone.add(watchGroup);
 
-    // Stylized Athletic Hand in Runner Grip (Curved fist)
+    // Stylized Athletic Hand with Integrated Realistic Anatomy (كف يد طبيعي مدمج بدون أي مربعات)
     const handGroup = new THREE.Group();
     wristBone.add(handGroup);
 
-    const palmGeo = new THREE.BoxGeometry(0.058, 0.062, 0.042);
+    // Smooth Anatomical Palm Core (كف يد طبيعي مقوس بدون مكعبات أو مربعات)
+    const palmGeo = new THREE.CylinderGeometry(0.026, 0.024, 0.056, 16);
+    palmGeo.scale(1.10, 1.0, 0.72);
     const palmMesh = new THREE.Mesh(palmGeo, this.skinMat);
-    palmMesh.position.set(0, -0.032, 0);
+    palmMesh.position.set(0, -0.030, 0);
+    palmMesh.castShadow = true;
     handGroup.add(palmMesh);
 
-    // Curled Fingers Rig
-    const makeFinger = (xOffset: number, zOffset: number) => {
+    // Tactical Charcoal Black Fingerless Glove Overlay (قفاز رياضي بدون أصابع مطابق للصورة)
+    const gloveGeo = new THREE.CylinderGeometry(0.027, 0.025, 0.040, 16);
+    gloveGeo.scale(1.12, 1.0, 0.74);
+    const gloveMesh = new THREE.Mesh(gloveGeo, this.gloveMat);
+    gloveMesh.position.set(0, -0.022, 0);
+    handGroup.add(gloveMesh);
+
+    // Circular knuckle cutouts on back of glove revealing fair skin underneath
+    for (let k = 0; k < 4; k++) {
+      const cutout = new THREE.Mesh(new THREE.SphereGeometry(0.0052, 8, 8), this.skinMat);
+      cutout.position.set(side * (-0.016 + k * 0.011), -0.038, 0.014);
+      handGroup.add(cutout);
+    }
+
+    // Rounded palm heel (تكامل قاعدة الكف)
+    const palmHeelGeo = new THREE.SphereGeometry(0.024, 12, 10);
+    palmHeelGeo.scale(1.15, 0.70, 0.85);
+    const palmHeel = new THREE.Mesh(palmHeelGeo, this.skinMat);
+    palmHeel.position.set(0, -0.010, 0);
+    handGroup.add(palmHeel);
+
+    // Integrated 5 Fingers Rig (4 fingers + articulated thumb with knuckles & fingertips)
+    const makeFinger = (xOffset: number, zOffset: number, lengthScale: number = 1.0) => {
       const mcp = new THREE.Group();
-      mcp.position.set(xOffset, -0.056, zOffset);
+      mcp.position.set(xOffset, -0.058, zOffset);
       handGroup.add(mcp);
 
-      const fGeo = new THREE.CylinderGeometry(0.009, 0.008, 0.030, 8);
+      // Knuckle joint (مفصل الأصبع الأساسي الدائري المندمج)
+      const knuckleGeo = new THREE.SphereGeometry(0.0075, 8, 8);
+      const knuckle = new THREE.Mesh(knuckleGeo, this.skinMat);
+      knuckle.position.set(0, 0, 0);
+      mcp.add(knuckle);
+
+      // Proximal Phalanx
+      const fGeo = new THREE.CylinderGeometry(0.0070, 0.0065, 0.026 * lengthScale, 8);
       const fMesh = new THREE.Mesh(fGeo, this.skinMat);
-      fMesh.position.set(0, -0.015, 0);
+      fMesh.position.set(0, -0.013 * lengthScale, 0);
+      fMesh.castShadow = true;
       mcp.add(fMesh);
 
+      // PIP joint (مفصل الأصبع الأوسط)
       const pip = new THREE.Group();
-      pip.position.set(0, -0.030, 0);
+      pip.position.set(0, -0.026 * lengthScale, 0);
       mcp.add(pip);
 
+      const pipKnuckle = new THREE.Mesh(new THREE.SphereGeometry(0.0062, 8, 8), this.skinMat);
+      pip.add(pipKnuckle);
+
+      const midGeo = new THREE.CylinderGeometry(0.0062, 0.0058, 0.020 * lengthScale, 8);
+      const midMesh = new THREE.Mesh(midGeo, this.skinMat);
+      midMesh.position.set(0, -0.010 * lengthScale, 0);
+      midMesh.castShadow = true;
+      pip.add(midMesh);
+
+      // DIP joint and rounded fingertip (الأنملة ورأس الأصبع الدائري)
       const dip = new THREE.Group();
-      dip.position.set(0, -0.024, 0);
+      dip.position.set(0, -0.020 * lengthScale, 0);
       pip.add(dip);
+
+      const tipGeo = new THREE.SphereGeometry(0.0055, 8, 8);
+      tipGeo.scale(1.0, 1.35, 1.0);
+      const tipMesh = new THREE.Mesh(tipGeo, this.skinMat);
+      tipMesh.position.set(0, -0.008 * lengthScale, 0);
+      tipMesh.castShadow = true;
+      dip.add(tipMesh);
 
       return { mcp, pip, dip };
     };
 
-    const index = makeFinger(side * -0.018, 0.015);
-    const middle = makeFinger(side * -0.006, 0.015);
-    const ring = makeFinger(side * 0.006, 0.015);
-    const pinky = makeFinger(side * 0.018, 0.015);
+    // 4 Articulated fingers with natural human anatomical proportions
+    const index = makeFinger(side * -0.018, 0.014, 0.95);
+    const middle = makeFinger(side * -0.006, 0.016, 1.05); // Longest finger
+    const ring = makeFinger(side * 0.006, 0.014, 0.98);
+    const pinky = makeFinger(side * 0.018, 0.012, 0.82); // Smallest finger
 
+    // Articulated Thumb with Thenar Eminence (إبهام متكامل مع بروز كعبرة الكف)
     const thumbCmc = new THREE.Group();
-    thumbCmc.position.set(side * -0.028, -0.024, -0.010);
+    thumbCmc.position.set(side * -0.026, -0.022, -0.008);
     handGroup.add(thumbCmc);
 
+    // Thenar muscle pad
+    const thenarGeo = new THREE.SphereGeometry(0.014, 10, 10);
+    thenarGeo.scale(1.1, 0.9, 0.9);
+    const thenarMesh = new THREE.Mesh(thenarGeo, this.skinMat);
+    thenarMesh.position.set(side * -0.006, -0.008, 0.004);
+    thumbCmc.add(thenarMesh);
+
     const thumbMcp = new THREE.Group();
+    thumbMcp.position.set(side * -0.012, -0.016, 0.006);
     thumbCmc.add(thumbMcp);
 
+    const thumbProximalGeo = new THREE.CylinderGeometry(0.0082, 0.0076, 0.024, 8);
+    const thumbProximal = new THREE.Mesh(thumbProximalGeo, this.skinMat);
+    thumbProximal.position.set(0, -0.012, 0);
+    thumbMcp.add(thumbProximal);
+
     const thumbIp = new THREE.Group();
+    thumbIp.position.set(0, -0.024, 0);
     thumbMcp.add(thumbIp);
 
-    const thumbMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.009, 0.032, 8), this.skinMat);
-    thumbMesh.position.set(side * -0.011, -0.014, 0);
-    thumbMesh.rotation.z = side * 0.45;
-    thumbMcp.add(thumbMesh);
+    const thumbTipGeo = new THREE.SphereGeometry(0.0072, 8, 8);
+    thumbTipGeo.scale(1.0, 1.3, 1.0);
+    const thumbTipMesh = new THREE.Mesh(thumbTipGeo, this.skinMat);
+    thumbTipMesh.position.set(0, -0.008, 0);
+    thumbTipMesh.castShadow = true;
+    thumbIp.add(thumbTipMesh);
 
     const handRig: ArticulatedHandRig = {
       handGroup,
@@ -1192,6 +1506,10 @@ export class BassamCharacter {
     const hipBone = new THREE.Group();
     hipBone.position.set(side * 0.115, -0.09, 0);
 
+    // Seamless hip socket ball to ensure smooth pelvic connection (تكامل مفصل الحوض والفخذ)
+    const hipJointBall = new THREE.Mesh(new THREE.SphereGeometry(0.078, 14, 14), this.pantsMat);
+    hipBone.add(hipJointBall);
+
     // Thigh - Athletic jogger thigh
     const thighGeo = new THREE.CylinderGeometry(0.076, 0.060, 0.40, 18);
     const thighMesh = new THREE.Mesh(thighGeo, this.pantsMat);
@@ -1199,10 +1517,14 @@ export class BassamCharacter {
     thighMesh.castShadow = true;
     hipBone.add(thighMesh);
 
-    // Knee Joint with Fabric Crease
+    // Knee Joint with Fabric Crease and Volumetric Joint Cap (تكامل مفصل الركبة بدون فراغات)
     const kneeBone = new THREE.Group();
     kneeBone.position.set(0, -0.40, 0);
     hipBone.add(kneeBone);
+
+    // Knee patella & socket filler ball
+    const kneeJointBall = new THREE.Mesh(new THREE.SphereGeometry(0.063, 14, 14), this.pantsMat);
+    kneeBone.add(kneeJointBall);
 
     const kneeCrease = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.010, 8, 16), this.pantsMat);
     kneeCrease.rotation.x = Math.PI * 0.5;
@@ -1228,43 +1550,91 @@ export class BassamCharacter {
     ankleBone.add(cuff);
 
     // =========================================================================
-    // CHUNKY SUBWAY SURFERS RUNNER SNEAKERS
+    // CHUNKY AERODYNAMIC RUNNER SNEAKERS (ZERO BOXES - 100% SCULPTED ORGANIC CURVES)
     // =========================================================================
     const shoeGroup = new THREE.Group();
     ankleBone.add(shoeGroup);
 
-    // 1. Thick Shock-Absorption White Rubber Outsole (0.04m thick with grip profile)
-    const soleGeo = new THREE.BoxGeometry(0.108, 0.040, 0.24);
-    const sole = new THREE.Mesh(soleGeo, this.shoeSoleMat);
-    sole.position.set(0, -0.075, 0.042);
-    sole.castShadow = true;
-    shoeGroup.add(sole);
+    // 1. Thick Shock-Absorption Neon Lime Rubber Outsole with Aerodynamic Rocker (نعل ليموني سميك منحني ممتص للصدمات)
+    // A. Heel Cushioning Pod (Flared rounded rear sole)
+    const heelPodGeo = new THREE.CylinderGeometry(0.052, 0.056, 0.040, 16);
+    heelPodGeo.scale(1.0, 1.0, 1.15);
+    const heelPod = new THREE.Mesh(heelPodGeo, this.shoeSoleMat);
+    heelPod.position.set(0, -0.075, -0.015);
+    heelPod.castShadow = true;
+    shoeGroup.add(heelPod);
 
-    // 2. Sneaker Leather / Mesh Upper
-    const upperGeo = new THREE.BoxGeometry(0.102, 0.075, 0.22);
+    // B. Forefoot Spring & Toe Rocker Pod (انحناء مقدمة الحذاء للركض السريع)
+    const forefootPodGeo = new THREE.CylinderGeometry(0.054, 0.050, 0.038, 16);
+    forefootPodGeo.scale(1.0, 1.0, 1.25);
+    const forefootPod = new THREE.Mesh(forefootPodGeo, this.shoeSoleMat);
+    forefootPod.position.set(0, -0.074, 0.090);
+    forefootPod.castShadow = true;
+    shoeGroup.add(forefootPod);
+
+    // C. Sculpted Upturned Rubber Toe Bumper (مصد أصابع مطاطي ليموني دائري)
+    const toeGeo = new THREE.SphereGeometry(0.046, 14, 14);
+    toeGeo.scale(1.08, 0.65, 0.95);
+    const toeBumper = new THREE.Mesh(toeGeo, this.shoeSoleMat);
+    toeBumper.position.set(0, -0.052, 0.145);
+    shoeGroup.add(toeBumper);
+
+    // 2. Sculpted Dynamic Sneaker Upper in Vibrant Cyan & Magenta (جسم الحذاء الفيروزي المنحني مع كعب فوشي)
+    const upperGeo = new THREE.CylinderGeometry(0.048, 0.052, 0.072, 16);
+    upperGeo.scale(1.05, 1.0, 1.35);
     const upper = new THREE.Mesh(upperGeo, this.shoeMat);
-    upper.position.set(0, -0.030, 0.040);
+    upper.position.set(0, -0.032, 0.045);
     upper.castShadow = true;
     shoeGroup.add(upper);
 
-    // 3. Rounded Rubber Toe Cap / Bumper
-    const toeGeo = new THREE.SphereGeometry(0.050, 12, 12);
-    toeGeo.scale(1.0, 0.65, 0.95);
-    const toeBumper = new THREE.Mesh(toeGeo, this.shoeSoleMat);
-    toeBumper.position.set(0, -0.048, 0.142);
-    shoeGroup.add(toeBumper);
+    // Magenta / Purple Heel Stabilizer Cup (كعب الحذاء الرياضي الفوشي المطابق للصورة)
+    const heelCupGeo = new THREE.TorusGeometry(0.045, 0.016, 8, 16, Math.PI);
+    heelCupGeo.rotateX(Math.PI * 0.5);
+    heelCupGeo.rotateY(Math.PI);
+    const heelCup = new THREE.Mesh(heelCupGeo, this.strapMat);
+    heelCup.position.set(0, -0.026, -0.015);
+    shoeGroup.add(heelCup);
 
-    // 4. White Shoelace Criss-Cross & Sneaker Tongue
-    const tongueGeo = new THREE.BoxGeometry(0.055, 0.065, 0.08);
-    const tongue = new THREE.Mesh(tongueGeo, this.shoeSoleMat);
-    tongue.position.set(0, 0.005, 0.045);
-    tongue.rotation.x = -0.32;
+    // 3. Ergonomic Padded Sneaker Tongue rising in front of ankle
+    const tongueGeo = new THREE.CylinderGeometry(0.026, 0.028, 0.070, 12);
+    tongueGeo.scale(1.0, 1.0, 0.60);
+    tongueGeo.rotateX(-0.35);
+    const tongue = new THREE.Mesh(tongueGeo, this.shoeMat);
+    tongue.position.set(0, 0.005, 0.052);
     shoeGroup.add(tongue);
 
-    const lacesGeo = new THREE.BoxGeometry(0.058, 0.008, 0.075);
-    const laces = new THREE.Mesh(lacesGeo, this.shoeSoleMat);
-    laces.position.set(0, 0.010, 0.060);
-    shoeGroup.add(laces);
+    // 4. Vibrant Neon Yellow Criss-Cross Shoelaces (أربطة الحذاء الصفراء النيونية ثلاثية الأبعاد)
+    const laceMat = new THREE.MeshStandardMaterial({
+      color: 0xfacc15, // Bright Neon Yellow
+      roughness: 0.35,
+    });
+
+    for (let l = 0; l < 3; l++) {
+      const zPos = 0.038 + l * 0.028;
+      const yPos = -0.005 + l * 0.010;
+
+      // Cross strand 1
+      const lace1Geo = new THREE.CylinderGeometry(0.0035, 0.0035, 0.046, 8);
+      lace1Geo.rotateZ(0.45);
+      lace1Geo.rotateX(0.12);
+      const lace1 = new THREE.Mesh(lace1Geo, laceMat);
+      lace1.position.set(0, yPos, zPos);
+      shoeGroup.add(lace1);
+
+      // Cross strand 2
+      const lace2Geo = new THREE.CylinderGeometry(0.0035, 0.0035, 0.046, 8);
+      lace2Geo.rotateZ(-0.45);
+      lace2Geo.rotateX(0.12);
+      const lace2 = new THREE.Mesh(lace2Geo, laceMat);
+      lace2.position.set(0, yPos, zPos);
+      shoeGroup.add(lace2);
+    }
+
+    // Top Runner Knot Bow
+    const knotGeo = new THREE.SphereGeometry(0.006, 8, 8);
+    const knot = new THREE.Mesh(knotGeo, laceMat);
+    knot.position.set(0, 0.026, 0.082);
+    shoeGroup.add(knot);
 
     return {
       hipBone,
@@ -1277,30 +1647,110 @@ export class BassamCharacter {
   }
 
   /**
-   * Urban Runner Backpack
+   * Aerodynamic Urban Runner Sling Pack (Compact, streamlined - does not obscure the athletic back)
    */
   private createBackpack(): THREE.Group {
     const backpack = new THREE.Group();
-    backpack.position.set(0, 0.14, -0.14);
+    backpack.position.set(0, 0.13, -0.105);
 
-    // Main pack body
-    const packGeo = new THREE.BoxGeometry(0.24, 0.32, 0.14);
+    // Streamlined compact pack body - sculpted aerodynamic contour
+    const packGeo = new THREE.CylinderGeometry(0.088, 0.098, 0.22, 18);
+    packGeo.scale(0.85, 1.0, 0.42);
     const packMesh = new THREE.Mesh(packGeo, this.backpackMat);
     packMesh.castShadow = true;
     backpack.add(packMesh);
 
-    // Front pocket with golden Mesopotamian star
-    const pocketGeo = new THREE.BoxGeometry(0.18, 0.18, 0.06);
-    const pocket = new THREE.Mesh(pocketGeo, this.backpackMat);
-    pocket.position.set(0, -0.040, -0.095);
-    backpack.add(pocket);
+    // Subtle diagonal techwear zipper accent
+    const zipGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.14, 8);
+    zipGeo.rotateZ(0.35);
+    const zipMesh = new THREE.Mesh(zipGeo, this.goldTrimMat);
+    zipMesh.position.set(0.015, 0.02, -0.024);
+    backpack.add(zipMesh);
 
-    const starEmblem = new THREE.Mesh(new THREE.CircleGeometry(0.030, 16), this.goldTrimMat);
-    starEmblem.position.set(0, -0.040, -0.126);
-    starEmblem.rotation.y = Math.PI;
-    backpack.add(starEmblem);
+    // Metallic golden runner emblem
+    const emblem = new THREE.Mesh(new THREE.CircleGeometry(0.018, 16), this.goldTrimMat);
+    emblem.position.set(0, -0.035, -0.026);
+    emblem.rotation.y = Math.PI;
+    backpack.add(emblem);
 
     return backpack;
+  }
+
+  /**
+   * Crossbody Runner Messenger Sling Strap & Golden Clasp & Hip Sling Pack
+   * Exact match to user's uploaded reference image
+   */
+  private createCrossbodyStrapAndBag(): THREE.Group {
+    const group = new THREE.Group();
+
+    // 1. Diagonal Chest Strap (from right shoulder down across chest to left hip)
+    const strapMat = new THREE.MeshStandardMaterial({
+      color: 0xd946ef, // Vibrant Magenta Purple
+      roughness: 0.48,
+      metalness: 0.08,
+    });
+
+    const strapEdgeMat = new THREE.MeshStandardMaterial({
+      color: 0xf43f5e, // Hot Pink piping
+      roughness: 0.40,
+    });
+
+    // Front diagonal strap segment (smooth flattened wide ribbon)
+    const frontStrapGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.42, 12);
+    frontStrapGeo.scale(0.35, 1.0, 1.25);
+    const frontStrap = new THREE.Mesh(frontStrapGeo, strapMat);
+    frontStrap.position.set(-0.015, 0.12, 0.165);
+    frontStrap.rotation.z = 0.58;
+    frontStrap.rotation.y = -0.15;
+    group.add(frontStrap);
+
+    // Front strap border trims
+    const trimGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.42, 8);
+    const trim1 = new THREE.Mesh(trimGeo, strapEdgeMat);
+    trim1.position.set(-0.015 + 0.018, 0.12, 0.166);
+    trim1.rotation.z = 0.58;
+    group.add(trim1);
+
+    const trim2 = new THREE.Mesh(trimGeo, strapEdgeMat);
+    trim2.position.set(-0.015 - 0.018, 0.12, 0.166);
+    trim2.rotation.z = 0.58;
+    group.add(trim2);
+
+    // 2. Shiny Golden Circular Clasp Medallion at center of chest (from reference image)
+    const claspGeo = new THREE.CylinderGeometry(0.024, 0.024, 0.010, 20);
+    claspGeo.rotateX(Math.PI * 0.5);
+    const claspMesh = new THREE.Mesh(claspGeo, this.goldTrimMat);
+    claspMesh.position.set(-0.045, 0.09, 0.178);
+    group.add(claspMesh);
+
+    // Golden inner runner star relief
+    const starCore = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 10), this.goldTrimMat);
+    starCore.position.set(-0.045, 0.09, 0.184);
+    group.add(starCore);
+
+    // 3. Compact Curved Runner Sling Pack resting at the left hip
+    const pouchGeo = new THREE.CylinderGeometry(0.075, 0.085, 0.14, 18);
+    pouchGeo.scale(0.85, 1.0, 1.20);
+    const pouchMat = new THREE.MeshStandardMaterial({
+      color: 0x00c7d9, // Vibrant Cyan body matching hoodie
+      roughness: 0.55,
+    });
+    const pouch = new THREE.Mesh(pouchGeo, pouchMat);
+    pouch.position.set(-0.21, -0.12, 0.08);
+    pouch.rotation.z = 0.22;
+    pouch.rotation.y = 0.35;
+    group.add(pouch);
+
+    // Flap with magenta accent
+    const flapGeo = new THREE.CylinderGeometry(0.078, 0.078, 0.040, 18, 1, false, 0, Math.PI);
+    flapGeo.scale(0.88, 1.0, 1.25);
+    const flap = new THREE.Mesh(flapGeo, strapMat);
+    flap.position.set(-0.21, -0.06, 0.08);
+    flap.rotation.z = 0.22;
+    flap.rotation.y = 0.35;
+    group.add(flap);
+
+    return group;
   }
 
   /**
@@ -1361,13 +1811,189 @@ export class BassamCharacter {
   }
 
   /**
+   * Iraqi Traditional Shemagh & Royal Agal Accessory
+   */
+  private createShemaghMesh(): THREE.Group {
+    const group = new THREE.Group();
+    group.position.set(0, 0.14, 0);
+
+    // Draped white cloth over head
+    const clothGeo = new THREE.SphereGeometry(0.146, 20, 20, 0, Math.PI * 2, 0, Math.PI * 0.58);
+    const clothMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.85,
+      metalness: 0.05,
+    });
+    const cloth = new THREE.Mesh(clothGeo, clothMat);
+    group.add(cloth);
+
+    // Double Ring Royal Black Agal (العقال المرعز الأسود)
+    const agalMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.35,
+      metalness: 0.2,
+    });
+    const agalGeo1 = new THREE.TorusGeometry(0.138, 0.012, 10, 24);
+    agalGeo1.rotateX(Math.PI * 0.5);
+    const agal1 = new THREE.Mesh(agalGeo1, agalMat);
+    agal1.position.set(0, 0.045, -0.005);
+    group.add(agal1);
+
+    const agalGeo2 = new THREE.TorusGeometry(0.135, 0.012, 10, 24);
+    agalGeo2.rotateX(Math.PI * 0.5);
+    const agal2 = new THREE.Mesh(agalGeo2, agalMat);
+    agal2.position.set(0, 0.065, -0.005);
+    group.add(agal2);
+
+    // Hanging folds at back and sides
+    const flapGeo = new THREE.BoxGeometry(0.24, 0.28, 0.03);
+    const flap = new THREE.Mesh(flapGeo, clothMat);
+    flap.position.set(0, -0.06, -0.12);
+    flap.rotation.x = -0.15;
+    group.add(flap);
+
+    group.visible = false;
+    return group;
+  }
+
+  /**
+   * Polarized Desert Sunglasses (نظارات شمس الصحراء)
+   */
+  private createSunglassesMesh(): THREE.Group {
+    const group = new THREE.Group();
+    group.position.set(0, 0.125, 0.118);
+
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      metalness: 0.8,
+      roughness: 0.2,
+    });
+
+    const lensMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      metalness: 0.9,
+      roughness: 0.05,
+      transparent: true,
+      opacity: 0.85,
+    });
+
+    // Left & Right Lenses
+    const lensGeo = new THREE.BoxGeometry(0.042, 0.024, 0.008);
+    const leftLens = new THREE.Mesh(lensGeo, lensMat);
+    leftLens.position.set(-0.038, 0, 0);
+    group.add(leftLens);
+
+    const rightLens = new THREE.Mesh(lensGeo, lensMat);
+    rightLens.position.set(0.038, 0, 0);
+    group.add(rightLens);
+
+    // Bridge
+    const bridgeGeo = new THREE.BoxGeometry(0.024, 0.004, 0.006);
+    const bridge = new THREE.Mesh(bridgeGeo, frameMat);
+    bridge.position.set(0, 0.006, 0);
+    group.add(bridge);
+
+    // Temples (Arms)
+    const armGeo = new THREE.BoxGeometry(0.004, 0.006, 0.12);
+    const leftArm = new THREE.Mesh(armGeo, frameMat);
+    leftArm.position.set(-0.062, 0.004, -0.06);
+    group.add(leftArm);
+
+    const rightArm = new THREE.Mesh(armGeo, frameMat);
+    rightArm.position.set(0.062, 0.004, -0.06);
+    group.add(rightArm);
+
+    group.visible = false;
+    return group;
+  }
+
+  /**
+   * Pro Streetwear Headphones (سماعات البودكاست والموسيقى)
+   */
+  private createHeadphonesMesh(): THREE.Group {
+    const group = new THREE.Group();
+    group.position.set(0, 0.13, 0);
+
+    const bandMat = new THREE.MeshStandardMaterial({
+      color: 0x1e1b4b,
+      roughness: 0.3,
+      metalness: 0.7,
+    });
+
+    const cushionMat = new THREE.MeshStandardMaterial({
+      color: 0x6366f1,
+      roughness: 0.5,
+    });
+
+    // Headband
+    const bandGeo = new THREE.TorusGeometry(0.145, 0.012, 8, 20, Math.PI);
+    bandGeo.rotateZ(Math.PI * 0.5);
+    bandGeo.rotateY(Math.PI * 0.5);
+    const band = new THREE.Mesh(bandGeo, bandMat);
+    band.position.set(0, 0.03, 0);
+    group.add(band);
+
+    // Left Ear Cup
+    const cupGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.024, 16);
+    cupGeo.rotateZ(Math.PI * 0.5);
+    const leftCup = new THREE.Mesh(cupGeo, cushionMat);
+    leftCup.position.set(-0.138, 0, 0);
+    group.add(leftCup);
+
+    // Right Ear Cup
+    const rightCup = new THREE.Mesh(cupGeo, cushionMat);
+    rightCup.position.set(0.138, 0, 0);
+    group.add(rightCup);
+
+    group.visible = false;
+    return group;
+  }
+
+  /**
+   * Warm Arabian Royal Scarf (الشال الكشميري العربي)
+   */
+  private createRoyalScarfMesh(): THREE.Group {
+    const group = new THREE.Group();
+    group.position.set(0, 0, 0);
+
+    const scarfMat = new THREE.MeshStandardMaterial({
+      color: 0xb45309,
+      roughness: 0.8,
+      metalness: 0.1,
+    });
+
+    // Coil around neck
+    const neckWrapGeo = new THREE.TorusGeometry(0.11, 0.036, 10, 24);
+    neckWrapGeo.rotateX(Math.PI * 0.5);
+    const neckWrap = new THREE.Mesh(neckWrapGeo, scarfMat);
+    neckWrap.position.set(0, 0.02, 0);
+    group.add(neckWrap);
+
+    // Draping tail down the chest
+    const tailGeo = new THREE.BoxGeometry(0.08, 0.24, 0.022);
+    const tail = new THREE.Mesh(tailGeo, scarfMat);
+    tail.position.set(-0.045, -0.09, 0.115);
+    tail.rotation.z = -0.12;
+    group.add(tail);
+
+    group.visible = false;
+    return group;
+  }
+
+  /**
    * Initialize & Profile
    * Scaled to 1.08x baseline for solid Subway Surfers presence and high visual readability
    */
   public initializeCharacter(config?: { name?: string; age?: number; appearance?: Partial<CharacterAppearance> }) {
     if (config?.name) this.characterName = config.name;
     if (config?.age) this.age = config.age;
-    if (config?.appearance) this.appearance = { ...this.appearance, ...config.appearance };
+    if (config?.appearance) {
+      this.appearance = { ...this.appearance, ...config.appearance };
+      if (config.appearance.skinTone) {
+        this.skinMat.color.set(config.appearance.skinTone);
+        this.skinMat.needsUpdate = true;
+      }
+    }
 
     // Solid, Subway Surfers proportion scale factor (1.08)
     const subwayScale = 1.08;
@@ -1390,11 +2016,17 @@ export class BassamCharacter {
    * Shop & Outfit Customization
    */
   public applyCustomization(customization: PlayerCustomization) {
-    const outfit = SHOP_ITEMS.find((i) => i.id === customization.equippedOutfit);
-    const primary = outfit?.colorHex || '#1d4ed8';
-    const secondary = outfit?.secondaryColorHex || '#f59e0b';
+    const outfitId = customization?.equippedOutfit || 'outfit_classic_sport';
+    const outfit = SHOP_ITEMS.find((i) => i.id === outfitId);
+    const primary = outfit?.colorHex || '#00c7d9';
+    const secondary = outfit?.secondaryColorHex || '#d946ef';
 
-    this.textureManager.setColors(primary, secondary, '#0f172a', primary);
+    const shoeId = customization?.equippedShoes || 'shoes_classic_runner';
+    const shoeItem = SHOP_ITEMS.find((i) => i.id === shoeId);
+    const shoePrimary = shoeItem?.colorHex || '#00c7d9';
+    const shoeSecondary = shoeItem?.secondaryColorHex || '#a3e635';
+
+    this.textureManager.setColors(primary, secondary, '#1e293b', shoePrimary);
     this.textureManager.regenerateTextures();
 
     this.hoodieMat.map = this.textureManager.textures.jacketAlbedo;
@@ -1406,6 +2038,12 @@ export class BassamCharacter {
     this.shoeMat.map = this.textureManager.textures.sneakersAlbedo;
     this.shoeMat.needsUpdate = true;
 
+    this.shoeSoleMat.color.set(shoeSecondary);
+    this.shoeSoleMat.needsUpdate = true;
+
+    this.strapMat.color.set(secondary);
+    this.strapMat.needsUpdate = true;
+
     this.backpackMat.map = this.textureManager.textures.backpackAlbedo;
     this.backpackMat.needsUpdate = true;
 
@@ -1415,6 +2053,20 @@ export class BassamCharacter {
       (this.thobeSkirt.material as THREE.MeshStandardMaterial).color.set(primary);
     } else {
       this.thobeSkirt.visible = false;
+    }
+
+    // Handle Wearable Accessories
+    const acc = customization.equippedAccessory;
+    if (this.shemaghMesh) this.shemaghMesh.visible = (acc === 'acc_modern_shemagh');
+    if (this.sunglassesMesh) this.sunglassesMesh.visible = (acc === 'acc_sport_shades');
+    if (this.headphonesMesh) this.headphonesMesh.visible = (acc === 'acc_pro_headphones');
+    if (this.scarfMesh) this.scarfMesh.visible = (acc === 'acc_royal_scarf');
+
+    // If Shemagh is equipped, hide the top hair locks to avoid clipping
+    if (acc === 'acc_modern_shemagh') {
+      this.hairFringe.visible = false;
+    } else {
+      this.hairFringe.visible = true;
     }
   }
 
@@ -1480,16 +2132,20 @@ export class BassamCharacter {
 
     // 3. Actions Kinematics
     switch (this.currentAction) {
-      case 'RUN': {
+      case 'RUN':
+      case 'FAST_RUN': {
+        const isFastSprint = this.currentAction === 'FAST_RUN' || runSpeed >= 22;
         // Step cadence scales realistically with speed
-        this.gaitPhase += delta * runSpeed * 0.60;
+        const cadenceMultiplier = isFastSprint ? 0.68 : 0.58;
+        this.gaitPhase += delta * runSpeed * cadenceMultiplier;
 
         const sinG = Math.sin(this.gaitPhase);
         const cosG = Math.cos(this.gaitPhase);
 
         // A. Pelvic Kinematics:
         // - Vertical Stride Bounce (Double frequency: lowest at foot-plant, highest at flight apex)
-        const strideBounce = (Math.sin(this.gaitPhase * 2 - Math.PI * 0.5) * 0.5 + 0.5) * 0.055 * speedRatio;
+        const bounceAmplitude = isFastSprint ? 0.040 : 0.052;
+        const strideBounce = (Math.sin(this.gaitPhase * 2 - Math.PI * 0.5) * 0.5 + 0.5) * bounceAmplitude * speedRatio;
 
         // - Landing Rebound Spring Damping (ارتداد الهبوط عند ملامسة الأرض)
         let reboundOffset = 0;
@@ -1500,9 +2156,8 @@ export class BassamCharacter {
         if (this.landingReboundTime > 0) {
           this.landingReboundTime -= delta;
           const p = Math.max(0, 1.0 - this.landingReboundTime / this.landingReboundDuration);
-          // Elastic spring response: initial compression then damped rebound oscillation
           const spring = Math.sin(p * Math.PI * 1.5) * Math.exp(-p * 3.2);
-          reboundOffset = -spring * 0.12; // Dip down then rebound up
+          reboundOffset = -spring * 0.12;
           reboundKneeBend = Math.max(0, -spring) * 0.35;
           reboundSquashY = -spring * 0.08;
           reboundSquashXZ = spring * 0.04;
@@ -1521,81 +2176,80 @@ export class BassamCharacter {
         this.group.scale.z = baseScale * (1 + reboundSquashXZ);
 
         // - Pelvic Yaw (Rotates forward toward stepping leg)
-        this.pelvisBone.rotation.y = sinG * 0.11 * speedRatio;
+        this.pelvisBone.rotation.y = sinG * (isFastSprint ? 0.09 : 0.11) * speedRatio;
 
         // - Pelvic Roll (Trendelenburg tilt toward stance leg)
-        this.pelvisBone.rotation.z = cosG * 0.038 * speedRatio;
+        this.pelvisBone.rotation.z = cosG * 0.036 * speedRatio;
 
-        // - Pelvic Pitch
-        this.pelvisBone.rotation.x = 0.06;
+        // - Pelvic Pitch (Aggressive athletic forward tilt when sprinting)
+        this.pelvisBone.rotation.x = isFastSprint ? 0.12 : 0.06;
 
         // B. Torso & Chest Counter-Rotation:
-        // - Chest yaw turns opposite to pelvis for athletic balance
-        this.chestBone.rotation.y = -sinG * 0.13 * speedRatio;
-        // - Chest roll compensates pelvic tilt to keep upper torso stable
-        this.chestBone.rotation.z = -cosG * 0.026 * speedRatio;
-        // - Forward athletic lean (Subway Surfers signature posture)
-        this.chestBone.rotation.x = 0.15;
+        this.chestBone.rotation.y = -sinG * (isFastSprint ? 0.11 : 0.13) * speedRatio;
+        this.chestBone.rotation.z = -cosG * 0.024 * speedRatio;
+        // Forward athletic lean: deep forward sprint posture at high speed
+        this.chestBone.rotation.x = isFastSprint ? 0.28 : 0.15;
 
-        // C. Head Stabilization (Eyes focused ahead):
-        this.headBone.rotation.y = sinG * 0.03;
-        this.headBone.rotation.z = -this.chestBone.rotation.z * 0.8;
-        this.headBone.rotation.x = -0.09;
+        // C. Head Stabilization (Focused eyes on the road ahead):
+        this.headBone.rotation.y = sinG * 0.025;
+        this.headBone.rotation.z = -this.chestBone.rotation.z * 0.75;
+        this.headBone.rotation.x = isFastSprint ? -0.16 : -0.09;
 
         // D. Leg Stride Cycle (Fluid & Physically Accurate):
         // Left Leg
-        const leftHipAngle = -sinG * 0.80 * speedRatio;
+        const leftHipAngle = -sinG * (isFastSprint ? 0.92 : 0.80) * speedRatio;
         this.hipLeftBone.rotation.x = leftHipAngle;
         this.hipLeftBone.rotation.y = -sinG * 0.04;
         this.hipLeftBone.rotation.z = 0.02;
 
         if (sinG < 0) {
-          // Forward drive: knee flexes up
-          this.kneeLeftBone.rotation.x = Math.abs(sinG) * 0.85 + reboundKneeBend;
+          // Forward drive: knee flexes up high
+          this.kneeLeftBone.rotation.x = Math.abs(sinG) * (isFastSprint ? 1.05 : 0.85) + reboundKneeBend;
         } else {
-          // Push-off recovery: heel kicks up toward glutes
-          this.kneeLeftBone.rotation.x = Math.pow(sinG, 1.3) * 1.35 + reboundKneeBend;
+          // Push-off recovery: heel kicks back
+          this.kneeLeftBone.rotation.x = Math.pow(sinG, 1.3) * (isFastSprint ? 1.50 : 1.35) + reboundKneeBend;
         }
 
         this.ankleLeftBone.rotation.x = -cosG * 0.28;
 
         // Right Leg (180° out of phase)
-        const rightHipAngle = sinG * 0.80 * speedRatio;
+        const rightHipAngle = sinG * (isFastSprint ? 0.92 : 0.80) * speedRatio;
         this.hipRightBone.rotation.x = rightHipAngle;
         this.hipRightBone.rotation.y = sinG * 0.04;
         this.hipRightBone.rotation.z = -0.02;
 
         if (sinG > 0) {
-          this.kneeRightBone.rotation.x = Math.abs(sinG) * 0.85 + reboundKneeBend;
+          this.kneeRightBone.rotation.x = Math.abs(sinG) * (isFastSprint ? 1.05 : 0.85) + reboundKneeBend;
         } else {
-          this.kneeRightBone.rotation.x = Math.pow(-sinG, 1.3) * 1.35 + reboundKneeBend;
+          this.kneeRightBone.rotation.x = Math.pow(-sinG, 1.3) * (isFastSprint ? 1.50 : 1.35) + reboundKneeBend;
         }
 
         this.ankleRightBone.rotation.x = cosG * 0.28;
 
-        // E. Arm Pumping (Opposite to legs, bent at 85°-95°):
-        const leftArmAngle = sinG * 0.74 * speedRatio;
+        // E. Arm Pumping (Opposite to legs, bent at athletic runner angle):
+        const armAmp = (isFastSprint ? 0.92 : 0.74) * speedRatio;
+        const leftArmAngle = sinG * armAmp;
         this.shoulderLeftBone.rotation.x = leftArmAngle;
         this.shoulderLeftBone.rotation.z = -0.08 - Math.max(0, -leftArmAngle) * 0.12;
         this.shoulderLeftBone.rotation.y = sinG * 0.08;
 
-        this.elbowLeftBone.rotation.x = -1.35 - Math.max(0, leftArmAngle) * 0.35;
+        this.elbowLeftBone.rotation.x = (isFastSprint ? -1.48 : -1.35) - Math.max(0, leftArmAngle) * 0.35;
 
-        const rightArmAngle = -sinG * 0.74 * speedRatio;
+        const rightArmAngle = -sinG * armAmp;
         this.shoulderRightBone.rotation.x = rightArmAngle;
         this.shoulderRightBone.rotation.z = 0.08 + Math.max(0, -rightArmAngle) * 0.12;
         this.shoulderRightBone.rotation.y = -sinG * 0.08;
 
-        this.elbowRightBone.rotation.x = -1.35 - Math.max(0, rightArmAngle) * 0.35;
+        this.elbowRightBone.rotation.x = (isFastSprint ? -1.48 : -1.35) - Math.max(0, rightArmAngle) * 0.35;
 
         // F. Smooth Lateral Banking on Lane Shifts (Critically Damped)
         const targetRoll = (this.laneX - this.targetLaneX) * 0.11;
         this.rollAngle = THREE.MathUtils.lerp(this.rollAngle, targetRoll, delta * 14);
         this.group.rotation.z = this.rollAngle;
-        this.group.rotation.y = -this.rollAngle * 0.35; // Slight steering yaw
+        this.group.rotation.y = -this.rollAngle * 0.35;
 
         // Footstep dust
-        if (strideBounce < 0.012 && this.animTime - this.nextDustIdx > 0.16) {
+        if (strideBounce < 0.012 && this.animTime - this.nextDustIdx > 0.15) {
           this.emitFootstepDust();
           this.nextDustIdx = this.animTime;
         }
@@ -1606,38 +2260,109 @@ export class BassamCharacter {
         this.jumpVelocity += this.gravity * delta;
         this.jumpY += this.jumpVelocity * delta;
 
-        if (this.jumpY <= 0) {
-          this.jumpY = 0;
-          this.jumpVelocity = 0;
-          this.isGrounded = true;
-          this.currentAction = 'RUN';
-          // Trigger the landing rebound effect!
-          this.triggerLandingRebound();
+        // If descending, smoothly transition into FALL pose
+        if (this.jumpVelocity <= 0) {
+          this.currentAction = 'FALL';
         }
 
         this.group.position.y = this.jumpY;
 
-        // Dynamic Athletic Leap Pose (Knees tucked, arms poised for balance)
-        this.hipLeftBone.rotation.x = -0.95;
-        this.kneeLeftBone.rotation.x = 1.45;
+        // Dynamic Athletic Leap Pose (Knees tucked forward, arms poised for aerodynamic flight)
+        this.hipLeftBone.rotation.x = -1.05;
+        this.kneeLeftBone.rotation.x = 1.55;
         this.ankleLeftBone.rotation.x = 0.35;
 
-        this.hipRightBone.rotation.x = -0.45;
-        this.kneeRightBone.rotation.x = 1.15;
+        this.hipRightBone.rotation.x = -0.55;
+        this.kneeRightBone.rotation.x = 1.25;
         this.ankleRightBone.rotation.x = -0.20;
 
         // Arms swept back for aerodynamic glide
         this.shoulderLeftBone.rotation.x = 0.65;
-        this.shoulderLeftBone.rotation.z = -0.25;
+        this.shoulderLeftBone.rotation.z = -0.28;
         this.elbowLeftBone.rotation.x = -0.65;
 
         this.shoulderRightBone.rotation.x = 0.65;
-        this.shoulderRightBone.rotation.z = 0.25;
+        this.shoulderRightBone.rotation.z = 0.28;
         this.elbowRightBone.rotation.x = -0.65;
 
         this.chestBone.rotation.x = 0.22;
         this.pelvisBone.rotation.set(0, 0, 0);
         this.headBone.rotation.x = -0.14;
+        break;
+      }
+
+      case 'FALL': {
+        this.jumpVelocity += this.gravity * delta;
+        this.jumpY += this.jumpVelocity * delta;
+
+        // Check ground touchdown
+        if (this.jumpY <= 0) {
+          this.jumpY = 0;
+          this.jumpVelocity = 0;
+          this.isGrounded = true;
+          this.currentAction = 'LAND';
+          this.triggerLandingRebound();
+          break;
+        }
+
+        this.group.position.y = this.jumpY;
+
+        // Descending Air Pose: legs extend downward with flexed knees preparing for ground impact
+        this.hipLeftBone.rotation.x = -0.35;
+        this.kneeLeftBone.rotation.x = 0.45;
+        this.ankleLeftBone.rotation.x = -0.15;
+
+        this.hipRightBone.rotation.x = -0.25;
+        this.kneeRightBone.rotation.x = 0.45;
+        this.ankleRightBone.rotation.x = -0.15;
+
+        // Arms spread slightly outward for aerodynamic equilibrium
+        this.shoulderLeftBone.rotation.x = 0.20;
+        this.shoulderLeftBone.rotation.z = -0.38;
+        this.elbowLeftBone.rotation.x = -0.45;
+
+        this.shoulderRightBone.rotation.x = 0.20;
+        this.shoulderRightBone.rotation.z = 0.38;
+        this.elbowRightBone.rotation.x = -0.45;
+
+        this.chestBone.rotation.x = 0.10;
+        this.headBone.rotation.x = -0.06;
+
+        // Updraft wind lifts fringe and cords slightly
+        this.hairFringe.rotation.x = 0.22;
+        this.drawstringL.rotation.x = -0.10;
+        this.drawstringR.rotation.x = -0.10;
+        break;
+      }
+
+      case 'LAND': {
+        // Landing shock absorption state
+        if (this.landingReboundTime > 0) {
+          this.landingReboundTime -= delta;
+          const p = Math.max(0, 1.0 - this.landingReboundTime / this.landingReboundDuration);
+          const spring = Math.sin(p * Math.PI * 1.5) * Math.exp(-p * 3.2);
+
+          this.pelvisBone.position.y = 0.96 - spring * 0.14;
+          const kneeBend = Math.max(0, -spring) * 0.42;
+          this.kneeLeftBone.rotation.x = kneeBend;
+          this.kneeRightBone.rotation.x = kneeBend;
+          this.hipLeftBone.rotation.x = -kneeBend * 0.6;
+          this.hipRightBone.rotation.x = -kneeBend * 0.6;
+
+          this.chestBone.rotation.x = 0.18 + Math.max(0, -spring) * 0.15;
+
+          const baseScale = (this.appearance.heightMeters / 1.78) * 1.08;
+          this.group.scale.y = baseScale * (1 - spring * 0.08);
+          this.group.scale.x = baseScale * (1 + spring * 0.04);
+          this.group.scale.z = baseScale * (1 + spring * 0.04);
+
+          if (this.landingReboundTime <= 0) {
+            this.landingReboundTime = 0;
+            this.currentAction = 'RUN';
+          }
+        } else {
+          this.currentAction = 'RUN';
+        }
         break;
       }
 
@@ -1648,35 +2373,109 @@ export class BassamCharacter {
           this.pelvisBone.position.y = 0.96;
           this.chestBone.rotation.x = 0;
         } else {
-          // Dynamic Low Subway Parkour Slide
-          this.pelvisBone.position.y = 0.42;
-          this.chestBone.rotation.x = -0.65;
-          this.chestBone.rotation.y = 0.14;
+          // Dynamic Low Parkour Slide
+          this.pelvisBone.position.y = 0.40;
+          this.chestBone.rotation.x = -0.68;
+          this.chestBone.rotation.y = 0.15;
 
           // Extended lead leg
-          this.hipLeftBone.rotation.x = -1.45;
-          this.kneeLeftBone.rotation.x = 0.08;
-          this.ankleLeftBone.rotation.x = 0.30;
+          this.hipLeftBone.rotation.x = -1.50;
+          this.kneeLeftBone.rotation.x = 0.06;
+          this.ankleLeftBone.rotation.x = 0.32;
 
           // Tucked rear leg
-          this.hipRightBone.rotation.x = 0.45;
-          this.hipRightBone.rotation.z = -0.20;
-          this.kneeRightBone.rotation.x = 1.65;
+          this.hipRightBone.rotation.x = 0.48;
+          this.hipRightBone.rotation.z = -0.22;
+          this.kneeRightBone.rotation.x = 1.70;
 
           // Bracing arms skimming asphalt
-          this.shoulderLeftBone.rotation.x = 0.75;
-          this.shoulderLeftBone.rotation.z = -0.35;
+          this.shoulderLeftBone.rotation.x = 0.78;
+          this.shoulderLeftBone.rotation.z = -0.38;
           this.elbowLeftBone.rotation.x = -0.45;
 
-          this.shoulderRightBone.rotation.x = 0.55;
-          this.shoulderRightBone.rotation.z = 0.25;
+          this.shoulderRightBone.rotation.x = 0.58;
+          this.shoulderRightBone.rotation.z = 0.28;
           this.elbowRightBone.rotation.x = -0.65;
         }
         break;
       }
 
+      case 'LANE_LEFT':
+      case 'LANE_RIGHT':
+      case 'DODGE': {
+        const isLeft = this.currentAction === 'LANE_LEFT' || this.laneX > this.targetLaneX;
+        const leanSign = isLeft ? -1 : 1;
+
+        // Dynamic lateral banking with foot push-off
+        const targetRoll = leanSign * 0.18;
+        this.rollAngle = THREE.MathUtils.lerp(this.rollAngle, targetRoll, delta * 18);
+        this.group.rotation.z = this.rollAngle;
+        this.group.rotation.y = -leanSign * 0.12;
+
+        this.chestBone.rotation.z = -this.rollAngle * 0.8;
+        this.chestBone.rotation.x = 0.16;
+
+        // Leading leg drives outward
+        if (isLeft) {
+          this.hipLeftBone.rotation.z = 0.15;
+          this.hipRightBone.rotation.z = 0.05;
+        } else {
+          this.hipRightBone.rotation.z = -0.15;
+          this.hipLeftBone.rotation.z = -0.05;
+        }
+
+        // Return to RUN once lane alignment is nearly reached
+        if (Math.abs(this.laneX - this.targetLaneX) < 0.15) {
+          this.currentAction = 'RUN';
+        }
+        break;
+      }
+
+      case 'HIT':
+      case 'STUMBLE': {
+        this.stumbleTimer -= delta;
+        if (this.stumbleTimer <= 0) {
+          this.stumbleTimer = 0;
+          this.currentAction = 'RUN';
+        } else {
+          // Stumble recoil: torso snaps back, arms flail for balance
+          const stagger = Math.sin(this.animTime * 24) * 0.08;
+          this.chestBone.rotation.x = -0.38;
+          this.chestBone.rotation.y = stagger;
+          this.headBone.rotation.x = 0.22;
+
+          this.shoulderLeftBone.rotation.x = -0.45;
+          this.shoulderLeftBone.rotation.z = -0.65;
+          this.shoulderRightBone.rotation.x = -0.45;
+          this.shoulderRightBone.rotation.z = 0.65;
+
+          this.hipLeftBone.rotation.x = 0.35 + stagger;
+          this.hipRightBone.rotation.x = -0.25 - stagger;
+          this.kneeLeftBone.rotation.x = 0.55;
+          this.kneeRightBone.rotation.x = 0.55;
+        }
+        break;
+      }
+
+      case 'DEATH':
+      case 'CRASH': {
+        this.crashTumbleTime += delta;
+        // Dynamic tumbling roll on impact
+        this.chestBone.rotation.x = -0.65;
+        this.headBone.rotation.x = 0.35;
+        this.hipLeftBone.rotation.x = 0.65;
+        this.hipRightBone.rotation.x = -0.55;
+        this.kneeLeftBone.rotation.x = 1.4;
+        this.kneeRightBone.rotation.x = 0.9;
+
+        // Roll group slightly to simulate tumbling onto pavement
+        this.group.rotation.x = Math.min(Math.PI * 0.45, this.crashTumbleTime * 5.0);
+        this.group.position.y = Math.max(0, this.group.position.y - delta * 4.5);
+        break;
+      }
+
       case 'IDLE': {
-        // Lively Subway Surfers Idle (Breathing, relaxed runner posture, weight shift)
+        // Realistic Idle (Lively runner breathing, subtle weight shift, alert eyes)
         const breath = Math.sin(this.animTime * 2.2) * 0.020;
         const sway = Math.sin(this.animTime * 1.1) * 0.016;
 
@@ -1703,18 +2502,151 @@ export class BassamCharacter {
         this.group.rotation.set(0, 0, 0);
         break;
       }
-
-      case 'CRASH': {
-        this.chestBone.rotation.x = -0.55;
-        this.hipLeftBone.rotation.x = 0.45;
-        this.hipRightBone.rotation.x = -0.45;
-        this.group.position.y = Math.max(0, this.group.position.y - delta * 4);
-        break;
-      }
     }
+
+    // 4. Dynamic Hand & Fingers Articulation (حركة أصابع اليدين الحيوية الواقعية)
+    this.applyDynamicHandPoses(speedRatio);
 
     // Update Dust Particles
     this.updateFootstepDust(delta);
+  }
+
+  /**
+   * Anatomically Articulated Hand and Finger Poses based on movement state
+   */
+  private applyDynamicHandPoses(speedRatio: number) {
+    if (!this.handLeftRig || !this.handRightRig) return;
+
+    const isRunning =
+      this.currentAction === 'RUN' ||
+      this.currentAction === 'FAST_RUN' ||
+      this.currentAction === 'LANE_LEFT' ||
+      this.currentAction === 'LANE_RIGHT' ||
+      this.currentAction === 'DODGE';
+
+    const isAirborne =
+      this.currentAction === 'JUMP' ||
+      this.currentAction === 'FALL' ||
+      this.currentAction === 'LAND';
+
+    const isStumblingOrCrashing =
+      this.currentAction === 'HIT' ||
+      this.currentAction === 'STUMBLE' ||
+      this.currentAction === 'DEATH' ||
+      this.currentAction === 'CRASH';
+
+    if (isRunning) {
+      // Natural athletic sprinter cup: fingers curved naturally, relaxed thumb
+      const runCurl = 0.58 + Math.sin(this.animTime * 8) * 0.08 * speedRatio;
+      const fingers = [
+        this.handLeftRig.index,
+        this.handLeftRig.middle,
+        this.handLeftRig.ring,
+        this.handLeftRig.pinky,
+        this.handRightRig.index,
+        this.handRightRig.middle,
+        this.handRightRig.ring,
+        this.handRightRig.pinky,
+      ];
+
+      fingers.forEach((f, i) => {
+        const offset = (i % 4) * 0.05;
+        f.mcp.rotation.x = runCurl + offset;
+        f.pip.rotation.x = runCurl * 0.85;
+        f.dip.rotation.x = runCurl * 0.55;
+      });
+
+      // Relaxed thumb resting over index finger
+      this.handLeftRig.thumb.cmc.rotation.z = -0.32;
+      this.handLeftRig.thumb.mcp.rotation.x = 0.42;
+      this.handRightRig.thumb.cmc.rotation.z = 0.32;
+      this.handRightRig.thumb.mcp.rotation.x = 0.42;
+
+    } else if (isAirborne) {
+      // Hands splayed open for aerodynamic balance and poise
+      const fingers = [
+        this.handLeftRig.index,
+        this.handLeftRig.middle,
+        this.handLeftRig.ring,
+        this.handLeftRig.pinky,
+        this.handRightRig.index,
+        this.handRightRig.middle,
+        this.handRightRig.ring,
+        this.handRightRig.pinky,
+      ];
+
+      fingers.forEach((f) => {
+        f.mcp.rotation.x = 0.18;
+        f.pip.rotation.x = 0.14;
+        f.dip.rotation.x = 0.10;
+      });
+
+      this.handLeftRig.thumb.cmc.rotation.z = -0.48;
+      this.handLeftRig.thumb.mcp.rotation.x = 0.15;
+      this.handRightRig.thumb.cmc.rotation.z = 0.48;
+      this.handRightRig.thumb.mcp.rotation.x = 0.15;
+
+    } else if (this.currentAction === 'SLIDE') {
+      // Bracing palm & fingers skimming asphalt surface
+      const fingers = [
+        this.handLeftRig.index,
+        this.handLeftRig.middle,
+        this.handLeftRig.ring,
+        this.handLeftRig.pinky,
+        this.handRightRig.index,
+        this.handRightRig.middle,
+        this.handRightRig.ring,
+        this.handRightRig.pinky,
+      ];
+
+      fingers.forEach((f) => {
+        f.mcp.rotation.x = -0.22;
+        f.pip.rotation.x = 0.28;
+        f.dip.rotation.x = 0.20;
+      });
+
+    } else if (isStumblingOrCrashing) {
+      // Flailing protective reflex hand pose
+      const fingers = [
+        this.handLeftRig.index,
+        this.handLeftRig.middle,
+        this.handLeftRig.ring,
+        this.handLeftRig.pinky,
+        this.handRightRig.index,
+        this.handRightRig.middle,
+        this.handRightRig.ring,
+        this.handRightRig.pinky,
+      ];
+
+      fingers.forEach((f) => {
+        f.mcp.rotation.x = -0.30;
+        f.pip.rotation.x = 0.45;
+        f.dip.rotation.x = 0.35;
+      });
+
+      this.handLeftRig.thumb.cmc.rotation.z = -0.55;
+      this.handRightRig.thumb.cmc.rotation.z = 0.55;
+
+    } else {
+      // IDLE: relaxed natural hand curve
+      const idleBreath = Math.sin(this.animTime * 2.2) * 0.05;
+      const fingers = [
+        this.handLeftRig.index,
+        this.handLeftRig.middle,
+        this.handLeftRig.ring,
+        this.handLeftRig.pinky,
+        this.handRightRig.index,
+        this.handRightRig.middle,
+        this.handRightRig.ring,
+        this.handRightRig.pinky,
+      ];
+
+      fingers.forEach((f) => {
+        f.mcp.rotation.x = 0.35 + idleBreath;
+        f.pip.rotation.x = 0.30;
+        f.dip.rotation.x = 0.20;
+      });
+    }
   }
 
   private emitFootstepDust() {
@@ -1806,6 +2738,11 @@ export class BassamCharacter {
     const currentLaneIdx = Math.round(this.targetLaneX / 2.5);
     const nextLaneIdx = Math.max(-1, Math.min(1, currentLaneIdx + direction));
     this.targetLaneX = nextLaneIdx * 2.5;
+
+    // Trigger dynamic lateral banking animation if grounded
+    if (this.isGrounded && (this.currentAction === 'RUN' || this.currentAction === 'FAST_RUN')) {
+      this.currentAction = direction < 0 ? 'LANE_LEFT' : 'LANE_RIGHT';
+    }
   }
 
   public moveLeft() {
@@ -1814,6 +2751,26 @@ export class BassamCharacter {
 
   public moveRight() {
     this.changeLane(1);
+  }
+
+  public dodge(direction: -1 | 1) {
+    this.currentAction = 'DODGE';
+    this.changeLane(direction);
+  }
+
+  public stumble(duration: number = 0.45) {
+    this.currentAction = 'STUMBLE';
+    this.stumbleTimer = duration;
+  }
+
+  public hit(duration: number = 0.45) {
+    this.currentAction = 'HIT';
+    this.stumbleTimer = duration;
+  }
+
+  public die() {
+    this.currentAction = 'DEATH';
+    this.crashTumbleTime = 0;
   }
 
   /**

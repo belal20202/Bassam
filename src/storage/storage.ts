@@ -9,6 +9,8 @@ import { INITIAL_ACHIEVEMENTS } from '../data/achievements';
 import { evaluateUnlockedTitles } from '../data/titles';
 import { generateDailyChallenges, processDailyChallengesProgression, verifyAndRefreshDailyChallenges } from '../data/dailyChallenges';
 
+export const CHARACTER_DESIGN_VERSION = 2;
+
 const STORAGE_KEY = 'HAMOUDI_RUNNER_V1_SAVE';
 
 export const DEFAULT_PLAYER_DATA: PlayerData = {
@@ -207,6 +209,19 @@ export function loadPlayerData(): PlayerData {
 
     // Check & Refresh 24h Daily Challenges if needed
     const verified = verifyAndRefreshDailyChallenges(initialData);
+
+    // Character Design Version 2 Migration: Ensure fresh Bassam outfit & sneakers
+    const savedVersion = (parsed as any)?.characterDesignVersion ?? 1;
+    if (savedVersion < CHARACTER_DESIGN_VERSION) {
+      verified.customization = {
+        equippedOutfit: 'outfit_classic_sport',
+        equippedShoes: 'shoes_classic_runner',
+        equippedTrail: 'trail_dust_clean',
+        equippedAccessory: 'acc_none',
+      };
+      (verified as any).characterDesignVersion = CHARACTER_DESIGN_VERSION;
+      savePlayerData(verified);
+    }
 
     // Sanitize legacy outfit & title
     if (!verified.customization.equippedOutfit || verified.customization.equippedOutfit === 'outfit_baghdadi_dishdasha') {

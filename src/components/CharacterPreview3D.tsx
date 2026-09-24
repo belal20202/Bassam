@@ -6,7 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { PlayerCustomization } from '../types';
-import { HammoudiCharacter, CharacterAction } from '../engine/character';
+import { BassamCharacter, CharacterAction } from '../engine/character';
 import { RotateCw, Sparkles, Hand, Eye, User, Wind } from 'lucide-react';
 
 export type PreviewZoomMode = 'FULL' | 'FACE' | 'HANDS';
@@ -25,7 +25,7 @@ export const CharacterPreview3D: React.FC<CharacterPreview3DProps> = ({
   title = 'معاينة عداء بغداد «بسام» ثلاثية الأبعاد',
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const characterRef = useRef<HammoudiCharacter | null>(null);
+  const characterRef = useRef<BassamCharacter | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -110,8 +110,8 @@ export const CharacterPreview3D: React.FC<CharacterPreview3DProps> = ({
     rimMesh.position.set(0, 0.01, 0);
     scene.add(rimMesh);
 
-    // 6. Character Instance (حمودي)
-    const character = new HammoudiCharacter();
+    // 6. Character Instance (بسام)
+    const character = new BassamCharacter();
     character.currentAction = 'IDLE';
     character.group.position.set(0, 0, 0);
     character.applyCustomization(customization);
@@ -135,7 +135,9 @@ export const CharacterPreview3D: React.FC<CharacterPreview3DProps> = ({
         }
 
         if (act === 'RUN') {
-          characterRef.current.updateAnimation(delta, 15, 1.0);
+          characterRef.current.updateAnimation(delta, 16, 1.0);
+        } else if (act === 'FAST_RUN') {
+          characterRef.current.updateAnimation(delta, 28, 1.8);
         } else if (act === 'JUMP') {
           characterRef.current.updateAnimation(delta, 12, 1.0);
         } else if (act === 'SLIDE') {
@@ -314,9 +316,10 @@ export const CharacterPreview3D: React.FC<CharacterPreview3DProps> = ({
             {(
               [
                 { id: 'IDLE', label: 'وقوف' },
-                { id: 'RUN', label: 'ركض سريع' },
+                { id: 'RUN', label: 'ركض' },
+                { id: 'FAST_RUN', label: 'ركض فائق' },
                 { id: 'JUMP', label: 'قفز وهبوط' },
-                { id: 'SLIDE', label: 'تزحلق وشرر' },
+                { id: 'SLIDE', label: 'تزحلق' },
                 { id: 'STUMBLE', label: 'تعثر' },
               ] as const
             ).map((act) => (

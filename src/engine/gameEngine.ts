@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { BiomeType, GameSettings, PlayerData, PowerUpType, RunStats, ActivePowerUp, PlayerCustomization, WeatherType } from '../types';
-import { HammoudiCharacter } from './character';
+import { BassamCharacter } from './character';
 import { CharacterController, GroundHitResult } from './characterController';
 import { WorldManager, getRandomBiome, ALL_BIOMES } from './world';
 import { ParticleFXManager } from './particleFX';
@@ -30,7 +30,7 @@ export class GameEngine {
   public scene: THREE.Scene;
   public camera: THREE.PerspectiveCamera;
   public renderer: THREE.WebGLRenderer;
-  public character: HammoudiCharacter;
+  public character: BassamCharacter;
   public characterController: CharacterController;
   public worldManager: WorldManager;
   public particleFX: ParticleFXManager;
@@ -70,6 +70,7 @@ export class GameEngine {
 
   // Time & Animation
   private lastTime: number = 0;
+  private smoothedDelta: number = 0.016;
   private animationFrameId: number | null = null;
   private crashTimeoutId: number | null = null;
   public isCrashing: boolean = false;
@@ -116,7 +117,7 @@ export class GameEngine {
     this.renderer.shadowMap.type = THREE.BasicShadowMap; // Ultra-efficient shadow computation
 
     // 3. World & Character
-    this.character = new HammoudiCharacter();
+    this.character = new BassamCharacter();
     this.character.applyCustomization(playerData.customization);
     this.characterController = new CharacterController(this.character);
     this.scene.add(this.character.group);
@@ -166,6 +167,11 @@ export class GameEngine {
 
   public setCallbacks(callbacks: GameEngineCallbacks) {
     this.callbacks = callbacks;
+  }
+
+  public updateCustomization(customization: PlayerCustomization) {
+    this.playerData.customization = customization;
+    this.character.applyCustomization(customization);
   }
 
   // ==================== GAME LIFECYCLE ====================
@@ -319,21 +325,21 @@ export class GameEngine {
     this.loop();
   }
 
-  public updateCustomization(customization: PlayerCustomization) {
-    this.playerData.customization = customization;
-    this.character.applyCustomization(customization);
-  }
-
   // ==================== MAIN LOOP ====================
   private loop = () => {
     if (!this.isRunning || this.isPaused) return;
 
     const now = performance.now();
-    let delta = (now - this.lastTime) / 1000;
+    let rawDelta = (now - this.lastTime) / 1000;
     this.lastTime = now;
 
     // Cap delta to prevent huge jumps and stutter on mobile devices
-    if (delta > 0.05) delta = 0.05;
+    if (rawDelta > 0.05) rawDelta = 0.05;
+    if (rawDelta < 0.001) rawDelta = 0.016;
+
+    // Exponential smoothing for buttery 60/120 FPS camera and motion tracking
+    this.smoothedDelta = this.smoothedDelta * 0.7 + rawDelta * 0.3;
+    const delta = this.smoothedDelta;
 
     this.update(delta);
     this.render();
@@ -690,6 +696,7 @@ export class GameEngine {
           // Shield absorbs the impact!
           audioManager.playShieldDeflect();
           this.triggerCameraShake(0.4);
+          this.character.stumble(0.38);
           this.shieldHitRemaining -= 1;
           if (this.shieldHitRemaining <= 0) {
             this.activePowerUps.delete('SHIELD');
@@ -714,7 +721,7 @@ export class GameEngine {
     try {
       localStorage.setItem('bassam_last_lost_governorate', this.worldManager.currentBiome);
     } catch (_) {}
-    this.character.currentAction = 'CRASH';
+    this.character.die();
     audioManager.playCrash();
     this.triggerCameraShake(0.9);
 

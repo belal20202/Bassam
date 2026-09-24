@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { HammoudiCharacter, CharacterAction } from './character';
+import { BassamCharacter, CharacterAction } from './character';
 import { WorldManager } from './world';
 import { ObstacleInstance } from './obstacles';
 
@@ -27,13 +27,35 @@ export interface IKSolverResult {
   footPlantY: number;
 }
 
+const _scratchDir = new THREE.Vector3();
+const _hipWorldL = new THREE.Vector3();
+const _hipWorldR = new THREE.Vector3();
+const _leftIKResult: IKSolverResult = {
+  hipAngleX: 0,
+  hipAngleY: 0,
+  hipAngleZ: 0,
+  kneeAngleX: 0,
+  ankleAngleX: 0,
+  ankleAngleZ: 0,
+  footPlantY: 0,
+};
+const _rightIKResult: IKSolverResult = {
+  hipAngleX: 0,
+  hipAngleY: 0,
+  hipAngleZ: 0,
+  kneeAngleX: 0,
+  ankleAngleX: 0,
+  ankleAngleZ: 0,
+  footPlantY: 0,
+};
+
 /**
  * CharacterController implements modern player locomotion, lane switching,
  * jump/slide physical trajectories, and two-bone analytical Inverse Kinematics (IK)
  * to guarantee realistic foot placement and ground alignment in virtual Baghdad.
  */
 export class CharacterController {
-  public character: HammoudiCharacter;
+  public character: BassamCharacter;
   public worldManager: WorldManager | null = null;
 
   // Locomotion & Lanes (-2.5, 0, 2.5)
@@ -73,7 +95,7 @@ export class CharacterController {
   public leftFootPlantWeight: number = 0;
   public rightFootPlantWeight: number = 0;
 
-  constructor(character: HammoudiCharacter, worldManager?: WorldManager) {
+  constructor(character: BassamCharacter, worldManager?: WorldManager) {
     this.character = character;
     if (worldManager) this.worldManager = worldManager;
   }
@@ -146,34 +168,33 @@ export class CharacterController {
   public solveTwoBoneLegIK(
     hipWorldPos: THREE.Vector3,
     footTargetWorld: THREE.Vector3,
-    groundNormal: THREE.Vector3
+    groundNormal: THREE.Vector3,
+    outResult: IKSolverResult
   ): IKSolverResult {
     const L1 = this.thighLength;
     const L2 = this.shinLength;
 
-    // Vector from hip to target foot
-    const dir = footTargetWorld.clone().sub(hipWorldPos);
-    let dist = dir.length();
+    // Vector from hip to target foot (zero allocations)
+    _scratchDir.subVectors(footTargetWorld, hipWorldPos);
+    let dist = _scratchDir.length();
 
     // Clamp distance to avoid hyperbolic singularities
     const maxDist = L1 + L2 - 0.002;
     const minDist = Math.abs(L1 - L2) + 0.04;
     dist = Math.max(minDist, Math.min(maxDist, dist));
 
-    // Law of Cosines:
-    // cos(alpha) = (L1^2 + dist^2 - L2^2) / (2 * L1 * dist)
+    // Law of Cosines
     const cosAlpha = (L1 * L1 + dist * dist - L2 * L2) / (2 * L1 * dist);
     const alpha = Math.acos(Math.max(-1, Math.min(1, cosAlpha)));
 
-    // cos(beta) = (L1^2 + L2^2 - dist^2) / (2 * L1 * L2)
     const cosBeta = (L1 * L1 + L2 * L2 - dist * dist) / (2 * L1 * L2);
     const beta = Math.acos(Math.max(-1, Math.min(1, cosBeta)));
 
     // Angle of target vector relative to vertical (-Y)
-    const pitchToTarget = Math.atan2(dir.z, -dir.y);
-    const rollToTarget = Math.atan2(dir.x, -dir.y);
+    const pitchToTarget = Math.atan2(_scratchDir.z, -_scratchDir.y);
+    const rollToTarget = Math.atan2(_scratchDir.x, -_scratchDir.y);
 
-    // Knee bends backwards (-Z in character local coordinates, exterior angle pi - beta)
+    // Knee bends backwards (-Z in character local coordinates)
     const kneeBend = Math.PI - beta;
 
     // Hip angle combines line of sight with triangle offset alpha
@@ -181,19 +202,18 @@ export class CharacterController {
     const hipAngleZ = rollToTarget;
 
     // Ankle orientation to align shoe sole flush with ground surface normal
-    // Normal in world space: (nx, ny, nz)
     const anklePitch = -Math.atan2(groundNormal.z, groundNormal.y);
     const ankleRoll = Math.atan2(groundNormal.x, groundNormal.y);
 
-    return {
-      hipAngleX,
-      hipAngleY: 0,
-      hipAngleZ,
-      kneeAngleX: kneeBend,
-      ankleAngleX: anklePitch,
-      ankleAngleZ: ankleRoll,
-      footPlantY: footTargetWorld.y,
-    };
+    outResult.hipAngleX = hipAngleX;
+    outResult.hipAngleY = 0;
+    outResult.hipAngleZ = hipAngleZ;
+    outResult.kneeAngleX = kneeBend;
+    outResult.ankleAngleX = anklePitch;
+    outResult.ankleAngleZ = ankleRoll;
+    outResult.footPlantY = footTargetWorld.y;
+
+    return outResult;
   }
 
   // =========================================================================
@@ -247,8 +267,8 @@ export class CharacterController {
       const maxGroundUnderFeet = Math.max(this.leftFootGround.height, this.rightFootGround.height);
       const baseHipY = 0.90 + this.verticalPelvisOffset + Math.max(char.jumpY, maxGroundUnderFeet);
 
-      const hipWorldL = new THREE.Vector3(leftFootX, baseHipY, footZBase);
-      const hipWorldR = new THREE.Vector3(rightFootX, baseHipY, footZBase);
+      _hipWorldL.set(leftFootX, baseHipY, footZBase);
+      _hipWorldR.set(rightFootX, baseHipY, footZBase);
 
       // Foot target positions
       this.leftFootTarget.set(
@@ -263,10 +283,9 @@ export class CharacterController {
         rightZ
       );
 
-      // Solve Two-Bone Inverse Kinematics for Left Leg
-      const leftIK = this.solveTwoBoneLegIK(hipWorldL, this.leftFootTarget, this.leftFootGround.normal);
-      // Solve Two-Bone Inverse Kinematics for Right Leg
-      const rightIK = this.solveTwoBoneLegIK(hipWorldR, this.rightFootTarget, this.rightFootGround.normal);
+      // Solve Two-Bone Inverse Kinematics for Left & Right Leg (zero allocations)
+      const leftIK = this.solveTwoBoneLegIK(_hipWorldL, this.leftFootTarget, this.leftFootGround.normal, _leftIKResult);
+      const rightIK = this.solveTwoBoneLegIK(_hipWorldR, this.rightFootTarget, this.rightFootGround.normal, _rightIKResult);
 
       // Apply IK blend to Character bones
       this.applyIKToBones(leftIK, rightIK, this.leftFootPlantWeight, this.rightFootPlantWeight);
@@ -381,14 +400,14 @@ export class CharacterController {
     const leftFootX = char.laneX - 0.12;
     const rightFootX = char.laneX + 0.12;
     const baseHipY = 0.90 + this.verticalPelvisOffset + Math.max(char.jumpY, this.leftFootGround.height);
-    const hipWorldL = new THREE.Vector3(leftFootX, baseHipY, charPos.z);
-    const hipWorldR = new THREE.Vector3(rightFootX, baseHipY, charPos.z);
+    _hipWorldL.set(leftFootX, baseHipY, charPos.z);
+    _hipWorldR.set(rightFootX, baseHipY, charPos.z);
 
     this.leftFootTarget.set(leftFootX, this.leftFootGround.height + this.footHeight, charPos.z);
     this.rightFootTarget.set(rightFootX, this.rightFootGround.height + this.footHeight, charPos.z);
 
-    const leftIK = this.solveTwoBoneLegIK(hipWorldL, this.leftFootTarget, this.leftFootGround.normal);
-    const rightIK = this.solveTwoBoneLegIK(hipWorldR, this.rightFootTarget, this.rightFootGround.normal);
+    const leftIK = this.solveTwoBoneLegIK(_hipWorldL, this.leftFootTarget, this.leftFootGround.normal, _leftIKResult);
+    const rightIK = this.solveTwoBoneLegIK(_hipWorldR, this.rightFootTarget, this.rightFootGround.normal, _rightIKResult);
 
     this.applyIKToBones(leftIK, rightIK, 0.85, 0.85);
   }

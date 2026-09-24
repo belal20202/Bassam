@@ -5,6 +5,9 @@
 
 import * as THREE from 'three';
 
+const _scratchSpringForce = new THREE.Vector3();
+const _scratchDampingForce = new THREE.Vector3();
+
 /**
  * Secondary Physics Spring Bone for procedural organic movement (Hair, Backpack, Drawstrings)
  */
@@ -26,12 +29,12 @@ export class SpringBone {
   }
 
   public update(delta: number, externalForce: THREE.Vector3) {
-    // Hooke's Law with damping: F = -k*x - c*v + F_ext
-    const springForce = this.currentOffset.clone().multiplyScalar(-this.stiffness);
-    const dampingForce = this.currentVelocity.clone().multiplyScalar(-this.damping);
-    const totalForce = springForce.add(dampingForce).add(externalForce);
+    // Hooke's Law with damping: F = -k*x - c*v + F_ext (zero allocations for 60-120fps)
+    _scratchSpringForce.copy(this.currentOffset).multiplyScalar(-this.stiffness);
+    _scratchDampingForce.copy(this.currentVelocity).multiplyScalar(-this.damping);
+    _scratchSpringForce.add(_scratchDampingForce).add(externalForce);
 
-    this.currentVelocity.addScaledVector(totalForce, delta);
+    this.currentVelocity.addScaledVector(_scratchSpringForce, delta);
     this.currentOffset.addScaledVector(this.currentVelocity, delta);
 
     // Clamp maximum spring displacement

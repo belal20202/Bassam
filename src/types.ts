@@ -150,6 +150,7 @@ export interface PlayerCustomization {
 
 // ==================== UNITY-COMPATIBLE CHARACTER ANATOMY & APPEARANCE ====================
 export interface CharacterAppearance {
+  skinTone?: string;
   // Facial Structure (هيكل وتفاصيل الوجه)
   eyeColor: {
     r: number;
@@ -178,20 +179,21 @@ export interface CharacterProfile {
 export const DEFAULT_CHARACTER_PROFILE: CharacterProfile = {
   characterName: 'بسام',
   age: 22,
-  description: 'شاب ببنية وجسم طبيعي',
+  description: 'عداء شاب رياضي مفعم بالحيوية بسترة هودي فيروزية مميزة',
   appearance: {
+    skinTone: '#f5cbaf', // بشرة بيضاء ناعمة مشرقة
     eyeColor: {
-      r: 0.25,
-      g: 0.15,
-      b: 0.05,
-      hex: '#40260d',
-      label: 'بني طبيعي',
+      r: 0.05,
+      g: 0.65,
+      b: 0.95,
+      hex: '#0ea5e9', // عيون زرقاء سماوية مشرقة مطابقة للصورة
+      label: 'أزرق سماوي مشرق',
     },
     noseScale: 1.0,
     mouthScale: 1.0,
     earSize: 1.0,
     heightMeters: 1.78,
-    bodyFatPercentage: 15.0,
+    bodyFatPercentage: 14.0,
     hasFiveFingersPerHand: true,
   },
 };

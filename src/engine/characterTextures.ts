@@ -44,10 +44,10 @@ export class CharacterTextureManager {
     frost: 0.0,
   };
 
-  private primaryColor: string = '#1e3a8a';
-  private secondaryColor: string = '#f59e0b';
-  private pantsColor: string = '#0f172a';
-  private shoesColor: string = '#e11d48';
+  private primaryColor: string = '#00c7d9'; // Vibrant Cyan / Turquoise from reference image
+  private secondaryColor: string = '#d946ef'; // Magenta / Purple accent
+  private pantsColor: string = '#1e293b'; // Charcoal Dark Runner Joggers
+  private shoesColor: string = '#00c7d9'; // Cyan Sneaker Upper with Lime Sole
 
   // Cached Canvas Textures
   public textures: CharacterTextureSet;
@@ -176,93 +176,81 @@ export class CharacterTextureManager {
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.CanvasTexture(canvas);
 
-    // Base athletic techwear fabric
-    ctx.fillStyle = this.primaryColor;
+    // Rich vibrant gradient for the oversized cyan/turquoise hoodie
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, '#00d2d3');
+    grad.addColorStop(0.4, this.primaryColor);
+    grad.addColorStop(1, '#0891b2');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 512);
 
-    // High-res microscopic fabric weave
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+    // Microscopic premium cotton fleece texture
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
     for (let y = 0; y < 512; y += 4) {
-      ctx.fillRect(0, y, 512, 1.5);
+      ctx.fillRect(0, y, 512, 1.2);
     }
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
     for (let x = 0; x < 512; x += 4) {
-      ctx.fillRect(x, 0, 1.5, 512);
+      ctx.fillRect(x, 0, 1.2, 512);
     }
 
-    // Dynamic Chevron Speed Stripes
-    ctx.strokeStyle = this.secondaryColor;
-    ctx.lineWidth = 14;
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(30, 110);
-    ctx.lineTo(256, 175);
-    ctx.lineTo(482, 110);
-    ctx.stroke();
-
-    // High-visibility retro-reflective piping (lights up bright in night/karrada)
-    const neonIntensity = this.currentState.neonGlow;
-    ctx.strokeStyle = neonIntensity > 0.3 ? '#38bdf8' : 'rgba(255, 255, 255, 0.8)';
-    ctx.lineWidth = neonIntensity > 0.3 ? 5 : 2.5;
-    ctx.beginPath();
-    ctx.moveTo(30, 128);
-    ctx.lineTo(256, 193);
-    ctx.lineTo(482, 128);
-    ctx.stroke();
-
-    // Waterproof Front Zipper
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(250, 160, 12, 352);
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 1.5;
-    for (let z = 165; z < 505; z += 6) {
-      ctx.beginPath();
-      ctx.moveTo(251, z);
-      ctx.lineTo(261, z);
-      ctx.stroke();
-    }
-
-    // Golden zipper pull
-    ctx.fillStyle = '#f59e0b';
-    ctx.fillRect(248, 205, 16, 26);
-    ctx.fillStyle = '#d97706';
-    ctx.fillRect(252, 231, 8, 16);
-
-    // Iraqi National Flag Crest (أحمر، أبيض، أسود مع النجوم الذهبية)
-    const ribbonY = 195;
-    ctx.fillStyle = '#ef4444';
-    ctx.fillRect(70, ribbonY, 74, 8);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(70, ribbonY + 8, 74, 8);
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(70, ribbonY + 16, 74, 8);
-
-    // Star of Ishtar 8-point Mesopotamian emblem
+    // Stylized Streetwear Chest Graphic "be st" in glowing neon cyan outline (from reference image)
     ctx.save();
-    ctx.translate(107, ribbonY + 48);
-    ctx.fillStyle = '#f59e0b';
-    for (let r = 0; r < 4; r++) {
-      ctx.rotate(Math.PI / 4);
-      ctx.beginPath();
-      ctx.moveTo(-4, -14);
-      ctx.lineTo(4, -14);
-      ctx.lineTo(0, 14);
-      ctx.fill();
-    }
-    ctx.beginPath();
-    ctx.arc(0, 0, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#fbbf24';
-    ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Outer glow for the logo
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 12;
+    ctx.font = '900 68px "Arial Rounded MT Bold", "Fredoka", sans-serif';
+    ctx.strokeStyle = '#e0f2fe';
+    ctx.lineWidth = 9;
+    ctx.strokeText('be st', 256, 175);
+
+    // Inner bright cyan stroke
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 5;
+    ctx.strokeText('be st', 256, 175);
+
+    // Core white neon highlight
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 66px "Arial Rounded MT Bold", "Fredoka", sans-serif';
+    ctx.fillText('be st', 256, 175);
     ctx.restore();
 
-    // Chest Typography: «عداء بغداد» & «حمودي»
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 22px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('عداء بغداد', 390, ribbonY + 22);
+    // Kangaroo Pocket curved outline and subtle shadow
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(110, 320);
+    ctx.bezierCurveTo(150, 290, 362, 290, 402, 320);
+    ctx.stroke();
 
-    ctx.fillStyle = this.secondaryColor;
-    ctx.font = 'bold 28px Arial, sans-serif';
-    ctx.fillText('حمودي', 390, ribbonY + 54);
+    // Neon Yellow Hoodie Drawstring hanging lines
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(215, 60);
+    ctx.bezierCurveTo(210, 140, 200, 180, 205, 220);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(297, 60);
+    ctx.bezierCurveTo(302, 140, 312, 180, 307, 220);
+    ctx.stroke();
+
+    // Golden metallic aglets
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(201, 220, 8, 18);
+    ctx.fillRect(303, 220, 8, 18);
+
+    // Subtle Baghdad Runner emblem near the hem
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('بسام ⚡ BAGHDAD RUNNER', 256, 470);
 
     // -----------------------------------------------------------------------
     // Environmental Overlays (Weather Texture Mapping)
@@ -366,34 +354,34 @@ export class CharacterTextureManager {
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.CanvasTexture(canvas);
 
+    // Deep charcoal athletic runner fabric
     ctx.fillStyle = this.pantsColor;
     ctx.fillRect(0, 0, 256, 256);
 
-    // Carbon weave micro-texture
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+    // Techwear micro-rib texture
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
     for (let y = 0; y < 256; y += 4) {
-      for (let x = 0; x < 256; x += 8) {
-        if ((x + y) % 8 === 0) ctx.fillRect(x, y, 4, 4);
-      }
+      ctx.fillRect(0, y, 256, 1.2);
     }
 
-    // Outer acceleration stripe
-    ctx.fillStyle = this.secondaryColor;
-    ctx.fillRect(238, 0, 12, 256);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(246, 0, 4, 256);
+    // Bold vibrant cyan/turquoise athletic speed stripes along the outer leg (from reference image)
+    ctx.fillStyle = '#00d2d3';
+    ctx.fillRect(232, 0, 16, 256);
 
-    // Articulated knee reinforcement contour
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    // Luminescent neon cyan inner border
+    ctx.fillStyle = '#67e8f9';
+    ctx.fillRect(228, 0, 4, 256);
+
+    // Ergonomic knee articulation seam
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(128, 128, 42, -Math.PI * 0.4, Math.PI * 0.4);
+    ctx.arc(128, 128, 44, -Math.PI * 0.45, Math.PI * 0.45);
     ctx.stroke();
 
-    // Lower cuff puddle splash or dust
+    // Weather impact on cuffs
     if (this.currentState.wetness > 0.05) {
       const wet = this.currentState.wetness;
-      // Dark wet cuffs & muddy asphalt splashes
       const splashGrad = ctx.createLinearGradient(0, 256, 0, 160);
       splashGrad.addColorStop(0, `rgba(15, 23, 42, ${wet * 0.7})`);
       splashGrad.addColorStop(1, 'transparent');
@@ -422,30 +410,50 @@ export class CharacterTextureManager {
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.CanvasTexture(canvas);
 
-    // Upper Sneaker Body
+    // Upper Sneaker Body in vivid cyan/blue
     ctx.fillStyle = this.shoesColor;
-    ctx.fillRect(0, 0, 256, 150);
+    ctx.fillRect(0, 0, 256, 140);
 
-    // Dynamic wave contour
-    ctx.strokeStyle = this.secondaryColor;
-    ctx.lineWidth = 6;
+    // Magenta / purple heel accent wrap (matching reference image)
+    ctx.fillStyle = '#d946ef';
+    ctx.fillRect(0, 40, 70, 100);
+
+    // Neon Chartreuse / Lime Green Thick Sculpted Outsole (from reference image)
+    const limeGrad = ctx.createLinearGradient(0, 140, 0, 256);
+    limeGrad.addColorStop(0, '#bef264');
+    limeGrad.addColorStop(0.5, '#a3e635');
+    limeGrad.addColorStop(1, '#84cc16');
+    ctx.fillStyle = limeGrad;
+    ctx.fillRect(0, 140, 256, 116);
+
+    // Neon Yellow Shoelace highlights
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 4;
+    for (let y = 30; y < 110; y += 18) {
+      ctx.beginPath();
+      ctx.moveTo(110, y);
+      ctx.lineTo(190, y + 10);
+      ctx.moveTo(190, y);
+      ctx.lineTo(110, y + 10);
+      ctx.stroke();
+    }
+
+    // Dynamic wave contour between upper and midsole
+    ctx.strokeStyle = '#bef264';
+    ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(10, 110);
-    ctx.bezierCurveTo(70, 70, 180, 140, 245, 95);
+    ctx.moveTo(0, 140);
+    ctx.bezierCurveTo(70, 125, 170, 155, 256, 138);
     ctx.stroke();
 
-    // Rubber Midsole and Tread
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(0, 150, 256, 106);
-
-    // Herringbone anti-slip asphalt tread grooves
-    ctx.strokeStyle = '#1e293b';
+    // Anti-slip grip tread grooves on outsole
+    ctx.strokeStyle = '#4d7c0f';
     ctx.lineWidth = 3;
-    for (let x = 10; x < 250; x += 18) {
+    for (let x = 12; x < 250; x += 16) {
       ctx.beginPath();
-      ctx.moveTo(x, 195);
-      ctx.lineTo(x + 9, 220);
-      ctx.lineTo(x + 18, 195);
+      ctx.moveTo(x, 205);
+      ctx.lineTo(x + 8, 235);
+      ctx.lineTo(x + 16, 205);
       ctx.stroke();
     }
 
@@ -463,7 +471,7 @@ export class CharacterTextureManager {
   }
 
   // =========================================================================
-  // 4. CORDURA NYLON BACKPACK TEXTURE (512x512)
+  // 4. CORDURA NYLON SLING BAG TEXTURE (512x512)
   // =========================================================================
   private createBackpackAlbedo(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
@@ -472,42 +480,39 @@ export class CharacterTextureManager {
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.CanvasTexture(canvas);
 
-    ctx.fillStyle = this.primaryColor;
+    // Cyan base fabric with magenta contrast trims (matching reference image sling bag)
+    ctx.fillStyle = '#00c7d9';
     ctx.fillRect(0, 0, 512, 512);
 
-    // Cordura cross-weave
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
-    for (let y = 0; y < 512; y += 6) ctx.fillRect(0, y, 512, 2.5);
-    for (let x = 0; x < 512; x += 6) ctx.fillRect(x, 0, 2.5, 512);
+    // Diagonal magenta / purple athletic strap accents
+    ctx.fillStyle = '#d946ef';
+    ctx.fillRect(0, 60, 512, 38);
+    ctx.fillRect(0, 414, 512, 38);
 
-    // High-vis reflective ribbon (Glows strongly at night)
-    const isNight = this.currentState.neonGlow > 0.3;
-    ctx.fillStyle = isNight ? '#38bdf8' : '#e2e8f0';
-    ctx.fillRect(50, 180, 412, 16);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(50, 185, 412, 6);
+    // Neon pink trim piping
+    ctx.fillStyle = '#f43f5e';
+    ctx.fillRect(0, 98, 512, 8);
+    ctx.fillRect(0, 406, 512, 8);
 
-    // Tactical webbing loops
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(80, 240, 352, 26);
-    ctx.fillStyle = '#334155';
-    for (let w = 90; w < 420; w += 48) {
-      ctx.fillRect(w, 240, 6, 26);
-    }
+    // Golden runner clasp icon
+    ctx.save();
+    ctx.translate(256, 256);
+    ctx.beginPath();
+    ctx.arc(0, 0, 48, 0, Math.PI * 2);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#d97706';
+    ctx.stroke();
 
-    // Embroidered Baghdad Runner patch
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(140, 300, 232, 95);
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(140, 300, 232, 95);
-
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 26px Arial, sans-serif';
+    ctx.fillStyle = '#1e1b4b';
+    ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('حمودي ⚡ عداء بغداد', 256, 358);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚡', 0, 2);
+    ctx.restore();
 
-    // Environmental Patina on backpack
+    // Environmental Patina on bag
     if (this.currentState.dust > 0.1) {
       ctx.fillStyle = `rgba(217, 165, 102, ${this.currentState.dust * 0.45})`;
       ctx.fillRect(0, 0, 512, 512);
@@ -527,14 +532,14 @@ export class CharacterTextureManager {
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.CanvasTexture(canvas);
 
-    // Warm natural Middle-Eastern athletic skin tone base (#dfa27a)
-    ctx.fillStyle = '#e2a67a';
+    // Healthy warm natural peachy fair skin tone (#f5cbaf)
+    ctx.fillStyle = '#f5cbaf';
     ctx.fillRect(0, 0, 512, 512);
 
     // Soft warm blush on cheeks for energetic, healthy runner look
     const cheekFlush = ctx.createRadialGradient(256, 256, 50, 256, 256, 230);
-    cheekFlush.addColorStop(0, 'rgba(235, 130, 105, 0.20)');
-    cheekFlush.addColorStop(0.7, 'rgba(225, 145, 115, 0.08)');
+    cheekFlush.addColorStop(0, 'rgba(244, 114, 182, 0.22)');
+    cheekFlush.addColorStop(0.7, 'rgba(251, 146, 60, 0.10)');
     cheekFlush.addColorStop(1, 'transparent');
     ctx.fillStyle = cheekFlush;
     ctx.fillRect(0, 0, 512, 512);
@@ -550,7 +555,7 @@ export class CharacterTextureManager {
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.CanvasTexture(canvas);
 
-    ctx.fillStyle = 'rgb(130, 130, 130)';
+    ctx.fillStyle = 'rgb(125, 125, 125)';
     ctx.fillRect(0, 0, 256, 256);
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -558,7 +563,7 @@ export class CharacterTextureManager {
   }
 
   // =========================================================================
-  // 6. CLEAN STYLIZED HANDS ALBEDO (512x512)
+  // 6. TACTICAL FINGERLESS RUNNER GLOVES & FAIR SKIN HANDS ALBEDO (512x512)
   // =========================================================================
   private createUltraHDHandsAlbedo(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
@@ -567,8 +572,26 @@ export class CharacterTextureManager {
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.CanvasTexture(canvas);
 
-    ctx.fillStyle = '#e2a67a';
+    // Natural skin background
+    ctx.fillStyle = '#f5cbaf';
     ctx.fillRect(0, 0, 512, 512);
+
+    // Black tactical glove wrap across palm and back of hand
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 100, 512, 320);
+
+    // Cutout circular knuckle holes revealing fair skin underneath (from reference image)
+    ctx.fillStyle = '#f5cbaf';
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(80 + i * 115, 230, 28, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Cyan accent stitching on glove strap
+    ctx.strokeStyle = '#00d2d3';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(30, 370, 452, 40);
 
     const tex = new THREE.CanvasTexture(canvas);
     return tex;

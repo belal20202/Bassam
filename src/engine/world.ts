@@ -114,16 +114,37 @@ export class WorldManager {
   private isFlashing: boolean = false;
   private flashIntensity: number = 0;
 
+  // Chunk Pool for zero memory allocation & stutter elimination
+  public chunkPool: TrackChunk[] = [];
+
   // Shared Geometries & Materials for high performance
   private roadGeo: THREE.PlaneGeometry;
   private roadMat: THREE.MeshStandardMaterial;
+  private sidewalkGeo: THREE.BoxGeometry;
   private sidewalkMat: THREE.MeshStandardMaterial;
+  private curbGeo: THREE.BoxGeometry;
+  private curbMat: THREE.MeshStandardMaterial;
+  private stripeGeo: THREE.PlaneGeometry;
+  private stripeMat: THREE.MeshBasicMaterial;
+  private catEyeGeo: THREE.BoxGeometry;
+  private catEyeMat: THREE.MeshStandardMaterial;
+  private guardrailBeamGeo: THREE.BoxGeometry;
+  private guardrailPostGeo: THREE.BoxGeometry;
+  private guardrailMat: THREE.MeshStandardMaterial;
   private palmTrunkMat: THREE.MeshStandardMaterial;
   private palmLeavesMat: THREE.MeshStandardMaterial;
   private buildingMaterials: THREE.MeshStandardMaterial[];
   private puddleGeo: THREE.PlaneGeometry;
   public puddleMat: THREE.MeshStandardMaterial;
   private streetGlowMat: THREE.MeshBasicMaterial;
+
+  // Electronic Highway Gantry Geometries & Textures
+  private gantryColGeo: THREE.CylinderGeometry;
+  private gantryBeamGeo: THREE.BoxGeometry;
+  private gantrySignGeo: THREE.BoxGeometry;
+  private gantryLightGeo: THREE.ConeGeometry;
+  private gantryLightMat: THREE.MeshBasicMaterial;
+  private static gantryTextures: THREE.CanvasTexture[] = [];
 
   // Modern Architecture & Nature Materials
   private glassTowerMat: THREE.MeshStandardMaterial;
@@ -318,19 +339,66 @@ export class WorldManager {
     this.scene.fog = new THREE.Fog(0xbae6fd, 75, 280);
     this.scene.background = this.currentSkyColor;
 
-    // 2. Performance Materials
+    // 2. Performance Materials & Geometries
     this.roadGeo = new THREE.PlaneGeometry(10, this.chunkLength);
     this.roadGeo.rotateX(-Math.PI / 2);
 
     this.roadMat = new THREE.MeshStandardMaterial({
-      color: 0x27272a, // dark asphalt
-      roughness: 0.85,
-      metalness: 0.04,
+      color: 0x18181b, // Deep rich asphalt
+      roughness: 0.82,
+      metalness: 0.06,
     });
 
+    this.sidewalkGeo = new THREE.BoxGeometry(3.5, 0.25, this.chunkLength);
     this.sidewalkMat = new THREE.MeshStandardMaterial({
       color: 0x94a3b8,
-      roughness: 0.9,
+      roughness: 0.88,
+    });
+
+    // Safety Curbs (Alternating hazard curb stones)
+    this.curbGeo = new THREE.BoxGeometry(0.22, 0.26, this.chunkLength);
+    this.curbMat = new THREE.MeshStandardMaterial({
+      color: 0xfacc15,
+      roughness: 0.45,
+      metalness: 0.1,
+    });
+
+    // Road Stripes
+    this.stripeGeo = new THREE.PlaneGeometry(0.14, 3.4);
+    this.stripeGeo.rotateX(-Math.PI / 2);
+    this.stripeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    // Reflective Cat's Eye Road Studs
+    this.catEyeGeo = new THREE.BoxGeometry(0.12, 0.05, 0.16);
+    this.catEyeMat = new THREE.MeshStandardMaterial({
+      color: 0xfef08a,
+      emissive: 0xfbbf24,
+      emissiveIntensity: 0.7,
+      metalness: 0.9,
+      roughness: 0.1,
+    });
+
+    // Metallic Highway Guardrails
+    this.guardrailBeamGeo = new THREE.BoxGeometry(0.08, 0.35, this.chunkLength);
+    this.guardrailPostGeo = new THREE.BoxGeometry(0.12, 0.8, 0.12);
+    this.guardrailMat = new THREE.MeshStandardMaterial({
+      color: 0x94a3b8,
+      metalness: 0.85,
+      roughness: 0.25,
+    });
+
+    // Electronic Highway Gantry Bridges
+    this.gantryColGeo = new THREE.CylinderGeometry(0.15, 0.18, 6.2, 10);
+    this.gantryBeamGeo = new THREE.BoxGeometry(10.2, 0.5, 0.5);
+    this.gantrySignGeo = new THREE.BoxGeometry(7.2, 1.4, 0.35);
+    this.gantryLightGeo = new THREE.ConeGeometry(2.0, 5.0, 12, 1, true);
+    this.gantryLightMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.12,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
     });
 
     this.palmTrunkMat = new THREE.MeshStandardMaterial({
@@ -485,8 +553,90 @@ export class WorldManager {
     // to provide continuous variety across all runs as requested by the player.
   }
 
+  // Electronic Highway Gantry Signs in Arabic
+  public static getGantryTexture(index: number): THREE.CanvasTexture {
+    if (this.gantryTextures[index]) return this.gantryTextures[index];
+    const messages = [
+      'طريق بغداد السريع - السرعة القصوى 100 كم/س',
+      'أهلاً بكم في بغداد عاصمة الحضارة والسلام',
+      'انتبه أمامك - قيادة آمنة وسلامة دائمة',
+      'تقاطع الجادرية - طريق الكرادة والمنصور',
+      'طريق مطار بغداد الدولي - رحلة موفقة',
+    ];
+    const msg = messages[index % messages.length];
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 0, 512, 128);
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(6, 6, 500, 116);
+      ctx.fillStyle = '#f59e0b';
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 8;
+      ctx.font = 'bold 24px "Cairo", "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(msg, 256, 64);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    this.gantryTextures[index] = tex;
+    return tex;
+  }
+
+  private createHighwayGantry(gantryIndex: number): THREE.Group {
+    const gantry = new THREE.Group();
+
+    // Left & Right Support Columns
+    const colL = new THREE.Mesh(this.gantryColGeo, this.guardrailMat);
+    colL.position.set(-5.1, 3.1, 0);
+    const colR = new THREE.Mesh(this.gantryColGeo, this.guardrailMat);
+    colR.position.set(5.1, 3.1, 0);
+    gantry.add(colL, colR);
+
+    // Cross Truss Beam
+    const beam = new THREE.Mesh(this.gantryBeamGeo, this.guardrailMat);
+    beam.position.set(0, 5.8, 0);
+    gantry.add(beam);
+
+    // Digital LED Signboard
+    const signMat = new THREE.MeshBasicMaterial({
+      map: WorldManager.getGantryTexture(gantryIndex),
+    });
+    const sign = new THREE.Mesh(this.gantrySignGeo, signMat);
+    sign.position.set(0, 5.8, 0.1);
+    gantry.add(sign);
+
+    // Volumetric Downlight Cones onto the highway
+    const lightL = new THREE.Mesh(this.gantryLightGeo, this.gantryLightMat);
+    lightL.position.set(-2.2, 3.2, 0);
+    lightL.rotation.x = Math.PI;
+
+    const lightR = new THREE.Mesh(this.gantryLightGeo, this.gantryLightMat);
+    lightR.position.set(2.2, 3.2, 0);
+    lightR.rotation.x = Math.PI;
+
+    gantry.add(lightL, lightR);
+    return gantry;
+  }
+
   // ==================== PROCEDURAL CHUNK CREATION ====================
   public createChunk(startZ: number, biome: BiomeType, difficultyFactor: number = 1.0): TrackChunk {
+    // 0. Check Chunk Pool for zero memory allocation & buttery smooth frame pacing
+    if (this.chunkPool.length > 0) {
+      const pooled = this.chunkPool.pop()!;
+      pooled.startZ = startZ;
+      pooled.biome = biome;
+      pooled.group.position.z = startZ + this.chunkLength / 2;
+      this.populateChunkContent(startZ, biome, difficultyFactor);
+      this.scene.add(pooled.group);
+      this.chunks.push(pooled);
+      return pooled;
+    }
+
     const group = new THREE.Group();
     group.position.z = startZ + this.chunkLength / 2;
 
@@ -495,31 +645,55 @@ export class WorldManager {
     road.receiveShadow = true;
     group.add(road);
 
-    // 2. Lane Dividers (White Dashed lines at x = -1.25 and x = 1.25)
-    const stripeCount = 6;
-    const stripeGeo = new THREE.PlaneGeometry(0.12, 3.2);
-    stripeGeo.rotateX(-Math.PI / 2);
-    const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    // 2. Safety Curbs on both edges (Alternating hazard blocks)
+    const curbL = new THREE.Mesh(this.curbGeo, this.curbMat);
+    curbL.position.set(-5.0, 0.13, 0);
+    const curbR = new THREE.Mesh(this.curbGeo, this.curbMat);
+    curbR.position.set(5.0, 0.13, 0);
+    group.add(curbL, curbR);
 
+    // 3. Lane Dividers (White Dashed lines at x = -1.25 and x = 1.25) & Cat-Eye Studs
+    const stripeCount = 6;
     for (let i = 0; i < stripeCount; i++) {
       const zOffset = -this.chunkLength / 2 + (i + 0.5) * (this.chunkLength / stripeCount);
-      const stripeL = new THREE.Mesh(stripeGeo, stripeMat);
+      const stripeL = new THREE.Mesh(this.stripeGeo, this.stripeMat);
       stripeL.position.set(-1.25, 0.01, zOffset);
-      const stripeR = new THREE.Mesh(stripeGeo, stripeMat);
+      const stripeR = new THREE.Mesh(this.stripeGeo, this.stripeMat);
       stripeR.position.set(1.25, 0.01, zOffset);
-      group.add(stripeL, stripeR);
+
+      // Reflective cat's eye road studs
+      const catEyeL = new THREE.Mesh(this.catEyeGeo, this.catEyeMat);
+      catEyeL.position.set(-1.25, 0.02, zOffset + 1.8);
+      const catEyeR = new THREE.Mesh(this.catEyeGeo, this.catEyeMat);
+      catEyeR.position.set(1.25, 0.02, zOffset + 1.8);
+
+      group.add(stripeL, stripeR, catEyeL, catEyeR);
     }
 
-    // 3. Sidewalks (Left & Right)
-    const sidewalkGeo = new THREE.BoxGeometry(3.5, 0.25, this.chunkLength);
-    const swL = new THREE.Mesh(sidewalkGeo, this.sidewalkMat);
+    // 4. Sidewalks (Left & Right)
+    const swL = new THREE.Mesh(this.sidewalkGeo, this.sidewalkMat);
     swL.position.set(-6.75, 0.125, 0);
     swL.receiveShadow = true;
 
-    const swR = new THREE.Mesh(sidewalkGeo, this.sidewalkMat);
+    const swR = new THREE.Mesh(this.sidewalkGeo, this.sidewalkMat);
     swR.position.set(6.75, 0.125, 0);
     swR.receiveShadow = true;
     group.add(swL, swR);
+
+    // 5. Metallic Highway Guardrails
+    const railL = new THREE.Mesh(this.guardrailBeamGeo, this.guardrailMat);
+    railL.position.set(-8.4, 0.45, 0);
+    const railR = new THREE.Mesh(this.guardrailBeamGeo, this.guardrailMat);
+    railR.position.set(8.4, 0.45, 0);
+    group.add(railL, railR);
+
+    // 6. Overhead Electronic Highway Gantry (Every 3 chunks)
+    const chunkIdx = Math.floor(startZ / this.chunkLength);
+    if (chunkIdx % 3 === 0 && startZ > 80) {
+      const gantry = this.createHighwayGantry(Math.floor(chunkIdx / 3));
+      gantry.position.set(0, 0, 0);
+      group.add(gantry);
+    }
 
     // 4. Modern Sidewalk Landscaping: Alternating Palms & Lush Flowering Trees
     const palmInterval = 25;
@@ -1160,24 +1334,12 @@ export class WorldManager {
       this.nextChunkZ += this.chunkLength;
     }
 
-    // 2. Recycle old chunks behind player and release GPU buffers to prevent overheating
+    // 2. Zero-Allocation Chunk Recycling to Pool (Stutter Elimination)
     for (let i = this.chunks.length - 1; i >= 0; i--) {
       const chunk = this.chunks[i];
       if (chunk.startZ + chunk.length < playerZ - 35) {
         this.scene.remove(chunk.group);
-        chunk.group.traverse((obj) => {
-          if ((obj as THREE.Mesh).isMesh) {
-            const mesh = obj as THREE.Mesh;
-            // Only dispose geometries not shared on class instance
-            if (
-              mesh.geometry &&
-              mesh.geometry !== this.roadGeo &&
-              mesh.geometry !== this.puddleGeo
-            ) {
-              mesh.geometry.dispose();
-            }
-          }
-        });
+        this.chunkPool.push(chunk);
         this.chunks.splice(i, 1);
       }
     }
@@ -1344,7 +1506,10 @@ export class WorldManager {
   }
 
   public resetWorld(forcedBiome?: BiomeType) {
-    this.chunks.forEach((c) => this.scene.remove(c.group));
+    this.chunks.forEach((c) => {
+      this.scene.remove(c.group);
+      this.chunkPool.push(c);
+    });
     this.chunks = [];
     this.nextChunkZ = 0;
     this.obstacleManager.clearAll();
